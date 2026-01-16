@@ -3,13 +3,16 @@ import { Department } from '@/src/domain/entities/Document';
 
 export const DEPARTMENTS: Department[] = [
   'NIGHT MED',
-  'MED NIGHT PED',
+  'MED',
+  'PED',
+  'NIGHT PED',
   'OBG',
   'ENT',
   'EYE',
   'SKIN',
   'CHK',
   'ER',
+  'SUR',
 ];
 
 export const DOCUMENT_TYPES = [

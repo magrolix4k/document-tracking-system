@@ -1,24 +1,14 @@
 // Validation utilities for domain entities
-import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentType, Priority, DocumentStatus } from '@/src/domain/entities/Document';
+import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentStatus } from '@/src/domain/entities/Document';
 import { ValidationError } from '../errors/DocumentErrors';
 
 // Valid constants
-const VALID_DEPARTMENTS: readonly Department[] = ['NIGHT MED', 'MED NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER'] as const;
-const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['ใบลา', 'หนังสือรับรอง', 'ใบรับรองนักศึกษา', 'เอกสารทั่วไป'] as const;
-const VALID_PRIORITIES: readonly Priority[] = ['normal', 'urgent', 'very-urgent'] as const;
+const VALID_DEPARTMENTS: readonly Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR'] as const;
 const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
 
 // Validation helpers
 export function isValidDepartment(value: unknown): value is Department {
   return typeof value === 'string' && (VALID_DEPARTMENTS as readonly string[]).includes(value);
-}
-
-export function isValidDocumentType(value: unknown): value is DocumentType {
-  return typeof value === 'string' && (VALID_DOCUMENT_TYPES as readonly string[]).includes(value);
-}
-
-export function isValidPriority(value: unknown): value is Priority {
-  return typeof value === 'string' && (VALID_PRIORITIES as readonly string[]).includes(value);
 }
 
 export function isValidStatus(value: unknown): value is DocumentStatus {
@@ -61,13 +51,9 @@ export function validateCreateDocumentDto(dto: unknown): asserts dto is CreateDo
     );
   }
 
-  // Validate documentType
-  if (!isValidDocumentType(data.documentType)) {
-    throw new ValidationError(
-      `ประเภทเอกสารไม่ถูกต้อง กรุณาเลือกจาก: ${VALID_DOCUMENT_TYPES.join(', ')}`,
-      'documentType',
-      data.documentType
-    );
+  // Validate weekRange
+  if (!isNonEmptyString(data.weekRange)) {
+    throw new ValidationError('ช่วงวันสัปดาห์ไม่ถูกต้อง', 'weekRange', data.weekRange);
   }
 
   // Validate details
@@ -77,15 +63,6 @@ export function validateCreateDocumentDto(dto: unknown): asserts dto is CreateDo
 
   if (data.details.length > 1000) {
     throw new ValidationError('รายละเอียดยาวเกินไป (สูงสุด 1000 ตัวอักษร)', 'details', data.details);
-  }
-
-  // Validate priority
-  if (!isValidPriority(data.priority)) {
-    throw new ValidationError(
-      `ระดับความเร่งด่วนไม่ถูกต้อง กรุณาเลือกจาก: ${VALID_PRIORITIES.join(', ')}`,
-      'priority',
-      data.priority
-    );
   }
 }
 
@@ -140,8 +117,6 @@ export function validateDocumentId(id: unknown): asserts id is string {
 // Export constants for use in other modules
 export const VALIDATION_CONSTANTS = {
   DEPARTMENTS: VALID_DEPARTMENTS,
-  DOCUMENT_TYPES: VALID_DOCUMENT_TYPES,
-  PRIORITIES: VALID_PRIORITIES,
   STATUSES: VALID_STATUSES,
   MAX_SENDER_NAME_LENGTH: 200,
   MAX_DETAILS_LENGTH: 1000,

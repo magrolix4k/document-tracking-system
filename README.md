@@ -18,13 +18,16 @@
 ## 🏢 แผนกที่รองรับ
 
 - NIGHT MED
-- MED NIGHT PED
+- MED
+- PED
+- NIGHT PED
 - OBG
 - ENT
 - EYE
 - SKIN
 - CHK
 - ER
+- SUR
 
 ## 🛠️ เทคโนโลยี
 

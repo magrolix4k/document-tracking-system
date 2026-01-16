@@ -1,9 +1,7 @@
 // Domain Entity - ข้อมูลหลักของเอกสาร
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
-export type Department = 'NIGHT MED' | 'MED NIGHT PED' | 'OBG' | 'ENT' | 'EYE' | 'SKIN' | 'CHK' | 'ER';
-export type DocumentType = 'ใบลา' | 'หนังสือรับรอง' | 'ใบรับรองนักศึกษา' | 'เอกสารทั่วไป';
-export type Priority = 'normal' | 'urgent' | 'very-urgent';
+export type Department = 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED' | 'OBG' | 'ENT' | 'EYE' | 'SKIN' | 'CHK' | 'ER' | 'SUR';
 
 export interface HistoryEntry {
   timestamp: string;
@@ -18,10 +16,9 @@ export interface Document {
   id: string;
   senderName: string;
   department: Department;
-  documentType: DocumentType;
+  weekRange: string; // e.g., "13 - 19 Jan 2025"
   details: string;
   status: DocumentStatus;
-  priority: Priority;
   submittedDate: string;
   receivedDate?: string;
   completedDate?: string;
@@ -33,9 +30,8 @@ export interface Document {
 export interface CreateDocumentDto {
   senderName: string;
   department: Department;
-  documentType: DocumentType;
+  weekRange: string;
   details: string;
-  priority: Priority;
 }
 
 // DTO สำหรับการอัปเดตสถานะ

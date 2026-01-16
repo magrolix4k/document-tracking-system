@@ -1,22 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Department, DocumentType, Priority } from '@/src/domain/entities';
+import { Department } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
+import { getCurrentWeekLabel } from '@/src/shared/utils/weekDateRange';
 
-const departments: Department[] = ['NIGHT MED', 'MED NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER'];
-const documentTypes: DocumentType[] = ['ใบลา', 'หนังสือรับรอง', 'ใบรับรองนักศึกษา', 'เอกสารทั่วไป'];
+const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR'];
 
 export default function SubmitPage() {
   const toast = useToast();
   const [senderName, setSenderName] = useState('');
   const [department, setDepartment] = useState<Department>('NIGHT MED');
-  const [documentType, setDocumentType] = useState<DocumentType>('ใบลา');
-  const [priority, setPriority] = useState<Priority>('normal');
   const [details, setDetails] = useState('');
   const [submittedDoc, setSubmittedDoc] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const weekLabel = getCurrentWeekLabel();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +30,16 @@ export default function SubmitPage() {
       id: docId,
       senderName: senderName.trim(),
       department,
-      documentType,
+      weekRange: weekLabel,
       details: details.trim(),
-      status: 'pending' as const,
-      priority,
+      status: 'processing' as const,
       submittedDate: new Date().toISOString(),
+      receivedDate: new Date().toISOString(),
       history: [
         {
           timestamp: new Date().toISOString(),
           action: 'created',
-          note: `เอกสาร${documentType}ถูกส่งโดย ${senderName.trim()}`,
+          note: `เอกสารของสัปดาห์ ${weekLabel} ถูกส่งโดย ${senderName.trim()}`,
         },
       ],
     };
@@ -53,7 +52,6 @@ export default function SubmitPage() {
     // Reset form
     setSenderName('');
     setDetails('');
-    setPriority('normal');
   };
 
   const resetForm = () => {
@@ -159,69 +157,17 @@ export default function SubmitPage() {
               </select>
             </div>
 
-            {/* Document Type */}
+            {/* Week Range Display */}
             <div>
               <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-1 text-sm">
-                ประเภทเอกสาร <span className="text-red-500">*</span>
+                สัปดาห์
               </label>
-              <select
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-700 dark:text-white transition-colors"
-              >
-                {documentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-2 text-sm">
-                ระดับความสำคัญ <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPriority('normal')}
-                  className={`py-2 px-3 rounded-lg font-semibold transition-all border-2 text-sm ${
-                    priority === 'normal'
-                      ? 'bg-green-500 text-white border-green-600 shadow-lg'
-                      : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-green-500'
-                  }`}
-                >
-                  <div className="text-base mb-0.5">✅</div>
-                  <div className="text-xs">ปกติ</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPriority('urgent')}
-                  className={`py-2 px-3 rounded-lg font-semibold transition-all border-2 text-sm ${
-                    priority === 'urgent'
-                      ? 'bg-orange-500 text-white border-orange-600 shadow-lg'
-                      : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-orange-500'
-                  }`}
-                >
-                  <div className="text-base mb-0.5">⚡</div>
-                  <div className="text-xs">ด่วน</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPriority('very-urgent')}
-                  className={`py-2 px-3 rounded-lg font-semibold transition-all border-2 text-sm ${
-                    priority === 'very-urgent'
-                      ? 'bg-red-500 text-white border-red-600 shadow-lg'
-                      : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-red-500'
-                  }`}
-                >
-                  <div className="text-base mb-0.5">🚨</div>
-                  <div className="text-xs">ด่วนมาก</div>
-                </button>
+              <div className="w-full px-3 py-2 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                <p className="text-indigo-900 dark:text-indigo-300 font-semibold text-sm">
+                  📅 {weekLabel}
+                </p>
               </div>
             </div>
-
             {/* Details */}
             <div>
               <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-1 text-sm">

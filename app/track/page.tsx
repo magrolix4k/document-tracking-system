@@ -85,19 +85,6 @@ function TrackPageContent() {
     });
   };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'normal':
-        return { label: '✅ ปกติ', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' };
-      case 'urgent':
-        return { label: '⚡ ด่วน', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' };
-      case 'very-urgent':
-        return { label: '🚨 ด่วนมาก', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' };
-      default:
-        return { label: '✅ ปกติ', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' };
-    }
-  };
-
   const handleAdvancedSearch = () => {
     const allDocs = getAllDocuments();
     const filtered = allDocs.filter(doc => {
@@ -166,13 +153,16 @@ function TrackPageContent() {
                 >
                   <option value="all">ทุกแผนก</option>
                   <option value="NIGHT MED">NIGHT MED</option>
-                  <option value="MED NIGHT PED">MED NIGHT PED</option>
+                  <option value="MED">MED</option>
+                  <option value="PED">PED</option>
+                  <option value="NIGHT PED">NIGHT PED</option>
                   <option value="OBG">OBG</option>
                   <option value="ENT">ENT</option>
                   <option value="EYE">EYE</option>
                   <option value="SKIN">SKIN</option>
                   <option value="CHK">CHK</option>
                   <option value="ER">ER</option>
+                  <option value="SUR">SUR</option>
                 </select>
                 <div className="grid grid-cols-2 gap-2">
                   <input
@@ -240,12 +230,6 @@ function TrackPageContent() {
               <div className={`border-2 rounded-lg p-4 text-center ${getStatusColor(document.status)}`}>
                 <p className="text-xs font-semibold mb-1">สถานะปัจจุบัน</p>
                 <p className="text-2xl font-bold">{getStatusText(document.status)}</p>
-              </div>
-
-              {/* Priority Badge */}
-              <div className={`rounded-lg p-3 text-center ${getPriorityBadge(document.priority || 'normal').color}`}>
-                <p className="text-xs font-semibold mb-1">ระดับความสำคัญ</p>
-                <p className="text-lg font-bold">{getPriorityBadge(document.priority || 'normal').label}</p>
               </div>
 
               {/* Timeline */}
@@ -332,7 +316,7 @@ function TrackPageContent() {
                   <div>
                     <p className="text-gray-600 dark:text-slate-400 text-xs font-semibold">ประเภทเอกสาร</p>
                     <p className="font-semibold text-gray-900 dark:text-slate-100">
-                      {document.documentType}
+                      {document.weekRange}
                     </p>
                   </div>
                 </div>

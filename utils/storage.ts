@@ -11,36 +11,43 @@ export const getDocumentById = (id: string) => documentService.getDocumentById(i
 export const getAllDocuments = () => documentService.getAllDocuments();
 export const searchDocuments = (filters: any) => documentService.searchDocuments(filters);
 
-export const addDocument = (
-  senderName: string,
-  department: any,
-  documentType: string,
-  details: string,
-  priority: string
-) => {
-  const dto: CreateDocumentDto = {
-    senderName,
-    department,
-    documentType: documentType as any,
-    details,
-    priority: priority as any,
-  };
-  return documentService.submitDocument(dto);
-};
-
 export const updateDocument = (id: string, updated: any, staffName?: string) => {
-  const doc = documentService.getDocumentById(id);
-  if (doc) {
-    Object.assign(doc, updated);
-    if (staffName && updated.status) {
-      const dto: UpdateDocumentStatusDto = {
-        status: updated.status as any,
-        staffName,
-      };
-      documentService.updateDocumentStatus(id, dto);
-    } else {
-      repository.update(id, doc);
+  try {
+    const docs = getAllDocuments();
+    const index = docs.findIndex(d => d.id === id);
+    
+    if (index === -1) {
+      console.error('Document not found:', id);
+      return;
     }
+
+    // Merge updates into the document
+    const doc = docs[index];
+    const updatedDoc = { ...doc, ...updated };
+
+    // Add history entry if status is changing
+    if (updated.status && updated.status !== doc.status) {
+      updatedDoc.history = [
+        ...(doc.history || []),
+        {
+          timestamp: new Date().toISOString(),
+          action: updated.status === 'processing' ? 'received' : updated.status === 'completed' ? 'completed' : 'updated',
+          staffName: staffName || undefined,
+          newValue: updated.status,
+        }
+      ];
+    }
+
+    // Update the document in the array
+    docs[index] = updatedDoc;
+    
+    // Save directly to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('documents', JSON.stringify(docs));
+    }
+  } catch (error) {
+    console.error('Error updating document:', error);
+    throw error;
   }
 };
 
@@ -57,7 +64,23 @@ export const addHistory = (id: string, action: string, staffName?: string, note?
 };
 
 export const deleteDocument = (id: string) => {
-  repository.delete(id);
+  try {
+    const docs = getAllDocuments();
+    const filtered = docs.filter(doc => doc.id !== id);
+    
+    if (docs.length === filtered.length) {
+      console.warn('Document not found for deletion:', id);
+      return;
+    }
+    
+    // Save directly to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('documents', JSON.stringify(filtered));
+    }
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    throw error;
+  }
 };
 
 export const generateDocumentId = () => {

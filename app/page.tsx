@@ -65,37 +65,6 @@ export default function Home() {
             </div>
           </Link>
         </div>
-
-        {/* Info Section */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow border dark:border-slate-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">
-            ข้อมูลระบบ
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6 text-gray-600 dark:text-slate-400">
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-slate-100 mb-2 text-sm">แผนกที่รองรับ:</p>
-              <ul className="list-disc list-inside space-y-1 text-sm columns-2">
-                <li>NIGHT MED</li>
-                <li>MED NIGHT PED</li>
-                <li>OBG</li>
-                <li>ENT</li>
-                <li>EYE</li>
-                <li>SKIN</li>
-                <li>CHK</li>
-                <li>ER</li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-slate-100 mb-2 text-sm">ประเภทเอกสาร:</p>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>ใบลา</li>
-                <li>หนังสือรับรอง</li>
-                <li>ใบรับรองนักศึกษา</li>
-                <li>เอกสารทั่วไป</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );

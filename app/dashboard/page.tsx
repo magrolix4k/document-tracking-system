@@ -6,15 +6,13 @@ import { Department } from '@/src/domain/entities';
 
 interface DepartmentStats {
   department: Department;
-  pending: number;
+  processing: number;
   completedToday: number;
-  avgProcessingTime: number;
 }
 import { 
   getAllDocuments, 
   getDocumentsByDepartment, 
-  getCompletedToday, 
-  getAverageProcessingTime,
+  getCompletedToday,
   getCompletedThisWeek,
   getCompletedThisMonth,
   getCompletedThisYear
@@ -27,7 +25,7 @@ const departments: Department[] = DEPARTMENTS;
 export default function DashboardPage() {
   const [stats, setStats] = useState<DepartmentStats[]>([]);
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'processing' | 'completed'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'processing' | 'completed'>('all');
   const [filterDepartment, setFilterDepartment] = useState<'all' | Department>('all');
   const [weeklyCompleted, setWeeklyCompleted] = useState(0);
   const [monthlyCompleted, setMonthlyCompleted] = useState(0);
@@ -67,27 +65,21 @@ export default function DashboardPage() {
   const loadStats = () => {
     const departmentStats: DepartmentStats[] = departments.map((dept) => {
       const allDocs = getDocumentsByDepartment(dept);
-      const pending = allDocs.filter((d) => d.status === 'pending').length;
+      const processing = allDocs.filter((d) => d.status === 'processing').length;
       const completedToday = getCompletedToday(dept);
-      const avgProcessingTime = getAverageProcessingTime(dept);
 
       return {
         department: dept,
-        pending,
+        processing,
         completedToday,
-        avgProcessingTime,
       };
     });
 
     setStats(departmentStats);
   };
 
-  const totalPending = stats.reduce((sum, s) => sum + s.pending, 0);
+  const totalProcessing = stats.reduce((sum, s) => sum + s.processing, 0);
   const totalCompletedToday = stats.reduce((sum, s) => sum + s.completedToday, 0);
-  const avgAllDepartments =
-    stats.length > 0
-      ? Math.round(stats.reduce((sum, s) => sum + s.avgProcessingTime, 0) / stats.length)
-      : 0;
 
   const filteredDocuments = allDocuments.filter((doc) => {
     const statusMatch = filterStatus === 'all' || doc.status === filterStatus;
@@ -96,23 +88,19 @@ export default function DashboardPage() {
   });
 
   const totalDocs = allDocuments.length;
-  const pendingCount = allDocuments.filter(d => d.status === 'pending').length;
   const processingCount = allDocuments.filter(d => d.status === 'processing').length;
   const completedCount = allDocuments.filter(d => d.status === 'completed').length;
-  const pendingPercent = totalDocs > 0 ? (pendingCount / totalDocs) * 100 : 0;
   const processingPercent = totalDocs > 0 ? (processingCount / totalDocs) * 100 : 0;
   const completedPercent = totalDocs > 0 ? (completedCount / totalDocs) * 100 : 0;
-  const maxDeptCount = Math.max(...stats.map(s => s.pending + s.completedToday), 1);
+  const maxDeptCount = Math.max(...stats.map(s => s.processing + s.completedToday), 1);
   const maxDailyCount = Math.max(...dailyStats.map(s => s.count), 1);
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending':
-        return 'รอดำเนินการ';
       case 'processing':
-        return 'กำลังดำเนินการ';
+        return 'ส่งเอกสาร';
       case 'completed':
-        return 'เสร็จสิ้น';
+        return 'รับเอกสารคืน';
       default:
         return status;
     }
@@ -120,8 +108,6 @@ export default function DashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       case 'processing':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
       case 'completed':
@@ -147,7 +133,7 @@ export default function DashboardPage() {
       'เลขที่เอกสาร': doc.id,
       'ชื่อผู้ส่ง': doc.senderName,
       'แผนก': doc.department,
-      'ประเภทเอกสาร': doc.documentType,
+      'สัปดาห์': doc.weekRange,
       'สถานะ': getStatusText(doc.status),
       'วันที่ส่ง': formatDate(doc.submittedDate),
       'วันที่รับ': doc.receivedDate ? formatDate(doc.receivedDate) : '-',
@@ -172,20 +158,18 @@ export default function DashboardPage() {
   const exportStatsToExcel = () => {
     const statsData: Array<Record<string, string | number>> = stats.map((stat) => ({
       'แผนก': stat.department,
-      'รอดำเนินการ': stat.pending,
-      'เสร็จวันนี้': stat.completedToday,
-      'เวลาเฉลี่ย (ชั่วโมง)': stat.avgProcessingTime,
+      'ส่งเอกสาร': stat.processing,
+      'รับคืนวันนี้': stat.completedToday,
     }));
 
     statsData.push({
       'แผนก': 'รวมทั้งหมด',
-      'รอดำเนินการ': totalPending,
-      'เสร็จวันนี้': totalCompletedToday,
-      'เวลาเฉลี่ย (ชั่วโมง)': avgAllDepartments,
+      'ส่งเอกสาร': totalProcessing,
+      'รับคืนวันนี้': totalCompletedToday,
     });
 
     const ws = XLSX.utils.json_to_sheet(statsData);
-    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'สถิติ');
@@ -208,18 +192,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Top Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-3 border-l-4 border-yellow-500">
-            <p className="text-xs text-gray-600 dark:text-slate-300 mb-1">รอดำเนินการ</p>
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{totalPending}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-3 border-l-4 border-blue-500">
+            <p className="text-xs text-gray-600 dark:text-slate-300 mb-1">ส่งเอกสาร</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{totalProcessing}</p>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-3 border-l-4 border-green-500">
-            <p className="text-xs text-gray-600 dark:text-slate-300 mb-1">เสร็จวันนี้</p>
+            <p className="text-xs text-gray-600 dark:text-slate-300 mb-1">รับคืนวันนี้</p>
             <p className="text-2xl font-bold text-green-600 dark:text-green-300">{totalCompletedToday}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-3 border-l-4 border-blue-500">
-            <p className="text-xs text-gray-600 dark:text-slate-300 mb-1">เวลาเฉลี่ย</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{avgAllDepartments}<span className="text-sm">ชม.</span></p>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg shadow p-3 border dark:border-purple-700/30">
             <p className="text-xs text-purple-700 dark:text-purple-300 mb-1">สัปดาห์นี้</p>
@@ -247,16 +227,12 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center">
                 <div className="relative w-48 h-48 mb-4">
                   <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#fbbf24" strokeWidth="20" 
-                      strokeDasharray={`${pendingPercent * 2.51} ${251 - pendingPercent * 2.51}`} 
-                      className="transition-all duration-500" />
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" strokeWidth="20" 
                       strokeDasharray={`${processingPercent * 2.51} ${251 - processingPercent * 2.51}`} 
-                      strokeDashoffset={`${-pendingPercent * 2.51}`} 
                       className="transition-all duration-500" />
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="20" 
                       strokeDasharray={`${completedPercent * 2.51} ${251 - completedPercent * 2.51}`} 
-                      strokeDashoffset={`${-(pendingPercent + processingPercent) * 2.51}`} 
+                      strokeDashoffset={`${-processingPercent * 2.51}`} 
                       className="transition-all duration-500" />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center flex-col">
@@ -267,22 +243,15 @@ export default function DashboardPage() {
                 <div className="space-y-2 w-full">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-yellow-400 rounded"></div>
-                      <span className="text-gray-700 dark:text-slate-300">รอดำเนินการ</span>
-                    </div>
-                    <span className="font-bold text-yellow-600 dark:text-yellow-400">{pendingCount} ({pendingPercent.toFixed(0)}%)</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                      <span className="text-gray-700 dark:text-slate-300">กำลังดำเนินการ</span>
+                      <span className="text-gray-700 dark:text-slate-300">ส่งเอกสาร</span>
                     </div>
                     <span className="font-bold text-blue-600 dark:text-blue-400">{processingCount} ({processingPercent.toFixed(0)}%)</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-green-500 rounded"></div>
-                      <span className="text-gray-700 dark:text-slate-300">เสร็จสิ้น</span>
+                      <span className="text-gray-700 dark:text-slate-300">รับคืนแล้ว</span>
                     </div>
                     <span className="font-bold text-green-600 dark:text-green-400">{completedCount} ({completedPercent.toFixed(0)}%)</span>
                   </div>
@@ -332,16 +301,16 @@ export default function DashboardPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">{stat.department}</span>
                       <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                        {stat.pending + stat.completedToday} รายการ
+                        {stat.processing + stat.completedToday} รายการ
                       </span>
                     </div>
                     <div className="relative h-8 bg-gray-200 dark:bg-slate-700 rounded overflow-hidden">
-                      <div className="absolute left-0 top-0 h-full bg-yellow-400 transition-all duration-500 flex items-center justify-center"
-                        style={{ width: `${(stat.pending / maxDeptCount) * 100}%` }}>
-                        {stat.pending > 0 && <span className="text-[10px] font-bold text-yellow-900">{stat.pending}</span>}
+                      <div className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500 flex items-center justify-center"
+                        style={{ width: `${(stat.processing / maxDeptCount) * 100}%` }}>
+                        {stat.processing > 0 && <span className="text-[10px] font-bold text-white">{stat.processing}</span>}
                       </div>
                       <div className="absolute top-0 h-full bg-green-500 transition-all duration-500 flex items-center justify-center"
-                        style={{ left: `${(stat.pending / maxDeptCount) * 100}%`, width: `${(stat.completedToday / maxDeptCount) * 100}%` }}>
+                        style={{ left: `${(stat.processing / maxDeptCount) * 100}%`, width: `${(stat.completedToday / maxDeptCount) * 100}%` }}>
                         {stat.completedToday > 0 && <span className="text-[10px] font-bold text-white">{stat.completedToday}</span>}
                       </div>
                     </div>
@@ -350,12 +319,12 @@ export default function DashboardPage() {
               </div>
               <div className="mt-3 flex gap-3 justify-center text-[10px]">
                 <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 bg-yellow-400 rounded"></div>
-                  <span className="text-gray-700 dark:text-slate-300">รอดำเนินการ</span>
+                  <div className="w-2.5 h-2.5 bg-blue-500 rounded"></div>
+                  <span className="text-gray-700 dark:text-slate-300">ส่งเอกสาร</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 bg-green-500 rounded"></div>
-                  <span className="text-gray-700 dark:text-slate-300">เสร็จวันนี้</span>
+                  <span className="text-gray-700 dark:text-slate-300">รับคืนวันนี้</span>
                 </div>
               </div>
             </div>
@@ -370,35 +339,27 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b-2 border-gray-300 dark:border-slate-600">
                       <th className="text-left py-2 px-2 text-gray-700 dark:text-slate-300">แผนก</th>
-                      <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">รอดำเนินการ</th>
-                      <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">เสร็จวันนี้</th>
-                      <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">เวลาเฉลี่ย</th>
+                      <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">ส่งเอกสาร</th>
+                      <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">รับคืนวันนี้</th>
                       <th className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">ภาระงาน</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stats.map((stat) => {
-                      const workload = stat.pending + stat.completedToday;
+                      const workload = stat.processing + stat.completedToday;
                       const workloadLevel = workload > 10 ? '🔴 สูง' : workload > 5 ? '🟡 ปานกลาง' : '🟢 ต่ำ';
-                      const efficiency = stat.avgProcessingTime < 24 ? '⚡ ดีมาก' : stat.avgProcessingTime < 48 ? '✅ ดี' : '⚠️ ช้า';
                       return (
                         <tr key={stat.department} className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
                           <td className="py-2 px-2 font-semibold text-gray-900 dark:text-slate-100">{stat.department}</td>
                           <td className="text-center py-2 px-2">
-                            <span className="inline-block bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-2 py-1 rounded font-bold">
-                              {stat.pending}
+                            <span className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-2 py-1 rounded font-bold">
+                              {stat.processing}
                             </span>
                           </td>
                           <td className="text-center py-2 px-2">
                             <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded font-bold">
                               {stat.completedToday}
                             </span>
-                          </td>
-                          <td className="text-center py-2 px-2 text-gray-700 dark:text-slate-300">
-                            <div className="flex flex-col items-center">
-                              <span className="font-bold">{stat.avgProcessingTime} ชม.</span>
-                              <span className="text-[10px]">{efficiency}</span>
-                            </div>
                           </td>
                           <td className="text-center py-2 px-2">
                             <div className="flex flex-col items-center">
@@ -418,12 +379,6 @@ export default function DashboardPage() {
                   <span>🟢 ต่ำ (≤5)</span>
                   <span>🟡 ปานกลาง (6-10)</span>
                   <span>🔴 สูง ({'>'}10)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold">ประสิทธิภาพ:</span>
-                  <span>⚡ ดีมาก ({'<'}24ชม.)</span>
-                  <span>✅ ดี ({'<'}48ชม.)</span>
-                  <span>⚠️ ช้า (≥48ชม.)</span>
                 </div>
               </div>
             </div>
@@ -450,13 +405,12 @@ export default function DashboardPage() {
               </label>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'pending' | 'processing' | 'completed')}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'processing' | 'completed')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:bg-slate-700 dark:text-slate-100 text-sm"
               >
                 <option value="all">ทั้งหมด</option>
-                <option value="pending">รอดำเนินการ</option>
-                <option value="processing">กำลังดำเนินการ</option>
-                <option value="completed">เสร็จสิ้น</option>
+                <option value="processing">ส่งเอกสาร</option>
+                <option value="completed">รับคืนแล้ว</option>
               </select>
             </div>
 
@@ -536,7 +490,7 @@ export default function DashboardPage() {
                         {doc.department}
                       </td>
                       <td className="py-2 px-2 text-xs text-gray-700 dark:text-slate-300">
-                        {doc.documentType}
+                        {doc.weekRange}
                       </td>
                       <td className="py-2 px-2 text-center">
                         <span
@@ -589,7 +543,7 @@ export default function DashboardPage() {
                       <span className="font-medium">ผู้ส่ง:</span> {doc.senderName}
                     </p>
                     <p className="text-gray-700 dark:text-slate-300">
-                      <span className="font-medium">แผนก:</span> {doc.department} | {doc.documentType}
+                      <span className="font-medium">แผนก:</span> {doc.department} | {doc.weekRange}
                     </p>
                     <p className="text-gray-600 dark:text-slate-400">
                       {new Date(doc.submittedDate).toLocaleDateString('th-TH', {

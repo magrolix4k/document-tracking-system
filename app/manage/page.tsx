@@ -2,18 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { Department, Document, DocumentStatus } from '@/src/domain/entities';
-import { updateDocument, getDocumentsByStatus } from '@/utils/storage';
+import { updateDocument, getDocumentsByStatus, deleteDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 
-const departments: Department[] = ['NIGHT MED', 'MED NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER'];
+const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR'];
 
 export default function ManagePage() {
   const toast = useToast();
   const [selectedDept, setSelectedDept] = useState<Department | 'ทั้งหมด'>('ทั้งหมด');
-  const [activeTab, setActiveTab] = useState<DocumentStatus>('pending');
+  const [activeTab, setActiveTab] = useState<DocumentStatus>('processing');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [editingDoc, setEditingDoc] = useState<string | null>(null);
+  const [editingSenderName, setEditingSenderName] = useState('');
+  const [editingDetails, setEditingDetails] = useState('');
   const [statusCounts, setStatusCounts] = useState<Record<DocumentStatus, number>>({
     pending: 0,
     processing: 0,
@@ -56,20 +59,13 @@ export default function ManagePage() {
   };
 
   const handleReceiveDocument = (docId: string) => {
-    const staffName = prompt('กรุณาระบุชื่อเจ้าหน้าที่:');
-    if (!staffName) {
-      toast.warning('ยกเลิกการรับเอกสาร');
-      return;
-    }
-    
     if (confirm('ยืนยันการรับเอกสารนี้?')) {
       updateDocument(
         docId,
         {
           status: 'processing',
           receivedDate: new Date().toISOString(),
-        },
-        staffName
+        }
       );
       toast.success(`รับเอกสาร ${docId} สำเร็จ`);
       loadDocuments();
@@ -77,26 +73,49 @@ export default function ManagePage() {
     }
   };
 
-  const handleCompleteDocument = (docId: string, note: string) => {
-    const staffName = prompt('กรุณาระบุชื่อเจ้าหน้าที่:');
-    if (!staffName) {
-      toast.warning('ยกเลิกการส่งคืนเอกสาร');
-      return;
-    }
-    
-    if (confirm('ยืนยันการส่งคืนเอกสารนี้?')) {
+  const handleCompleteDocument = (docId: string) => {
+    if (confirm('ยืนยันการรับคืนเอกสารนี้?')) {
       updateDocument(
         docId,
         {
           status: 'completed',
           completedDate: new Date().toISOString(),
-          staffNote: note || undefined,
-        },
-        staffName
+        }
       );
-      toast.success(`ส่งคืนเอกสาร ${docId} สำเร็จ`);
-      setEditingNote(null);
-      setNoteText('');
+      toast.success(`รับคืนเอกสาร ${docId} สำเร็จ`);
+      loadDocuments();
+      updateStatusCounts();
+    }
+  };
+
+  const handleEditDocument = (doc: Document) => {
+    setEditingDoc(doc.id);
+    setEditingSenderName(doc.senderName);
+    setEditingDetails(doc.details);
+  };
+
+  const handleSaveEdit = (docId: string) => {
+    if (!editingSenderName.trim()) {
+      toast.error('กรุณาระบุชื่อผู้ส่ง');
+      return;
+    }
+
+    updateDocument(
+      docId,
+      {
+        senderName: editingSenderName.trim(),
+        details: editingDetails.trim(),
+      }
+    );
+    toast.success('แก้ไขเอกสารสำเร็จ');
+    setEditingDoc(null);
+    loadDocuments();
+  };
+
+  const handleDeleteDocument = (docId: string) => {
+    if (confirm('ยืนยันการยกเลิกเอกสารนี้? (ไม่สามารถกู้คืนได้)')) {
+      deleteDocument(docId);
+      toast.success(`ยกเลิกเอกสาร ${docId} สำเร็จ`);
       loadDocuments();
       updateStatusCounts();
     }
@@ -118,22 +137,9 @@ export default function ManagePage() {
       case 'pending':
         return { label: 'รอดำเนินการ', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
       case 'processing':
-        return { label: 'กำลังดำเนินการ', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+        return { label: 'ส่งเอกสาร', color: 'bg-blue-100 text-blue-800 border-blue-300' };
       case 'completed':
-        return { label: 'เสร็จสิ้น', color: 'bg-green-100 text-green-800 border-green-300' };
-    }
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'normal':
-        return { label: '✅ ปกติ', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' };
-      case 'urgent':
-        return { label: '⚡ ด่วน', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' };
-      case 'very-urgent':
-        return { label: '🚨 ด่วนมาก', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' };
-      default:
-        return { label: '✅ ปกติ', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' };
+        return { label: 'รับเอกสารคืน', color: 'bg-green-100 text-green-800 border-green-300' };
     }
   };
 
@@ -186,7 +192,7 @@ export default function ManagePage() {
           {/* Status Tabs */}
           <div className="mb-6 border-b border-gray-300 dark:border-slate-600">
             <div className="flex gap-1">
-              {(['pending', 'processing', 'completed'] as DocumentStatus[]).map((status) => {
+              {(['processing', 'completed'] as DocumentStatus[]).map((status) => {
                 const badge = getStatusBadge(status);
                 return (
                   <button
@@ -223,7 +229,7 @@ export default function ManagePage() {
                   key={doc.id}
                   className="bg-gray-50 dark:bg-slate-900 rounded-lg p-4 border-2 border-gray-200 dark:border-slate-700"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm">
@@ -246,87 +252,92 @@ export default function ManagePage() {
                         >
                           {getStatusBadge(doc.status).label}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getPriorityBadge(doc.priority || 'normal').color}`}>
-                          {getPriorityBadge(doc.priority || 'normal').label}
-                        </span>
                       </div>
-                      <div className="grid md:grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <span className="text-gray-600 dark:text-slate-400">ผู้ส่ง: </span>
-                          <span className="font-semibold text-gray-900 dark:text-slate-100">
-                            {doc.senderName}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 dark:text-slate-400">ประเภท: </span>
-                          <span className="font-semibold text-gray-900 dark:text-slate-100">
-                            {doc.documentType}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 dark:text-slate-400">วันที่ส่ง: </span>
-                          <span className="font-semibold text-gray-900 dark:text-slate-100">
-                            {formatDate(doc.submittedDate)}
-                          </span>
-                        </div>
-                      </div>
-                      {doc.details && (
-                        <p className="text-gray-600 dark:text-slate-400 mt-2 text-xs">
-                          รายละเอียด: {doc.details}
-                        </p>
-                      )}
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-1.5 min-w-[140px]">
-                      {doc.status === 'pending' && (
-                        <button
-                          onClick={() => handleReceiveDocument(doc.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-sm"
-                        >
-                          รับเอกสาร
-                        </button>
-                      )}
-                      {doc.status === 'processing' && (
-                        <>
-                          {editingNote === doc.id ? (
-                            <div className="space-y-1.5">
-                              <textarea
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                                placeholder="หมายเหตุถึงผู้ส่ง (ถ้ามี)"
-                                className="w-full px-2 py-1.5 border-2 border-gray-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white text-xs"
-                                rows={2}
-                              />
-                              <div className="flex gap-1.5">
-                                <button
-                                  onClick={() => handleCompleteDocument(doc.id, noteText)}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-xs"
-                                >
-                                  ยืนยัน
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingNote(null);
-                                    setNoteText('');
-                                  }}
-                                  className="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-xs"
-                                >
-                                  ยกเลิก
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
+                      {/* Edit Mode */}
+                      {editingDoc === doc.id ? (
+                        <div className="space-y-2 mb-2">
+                          <div>
+                            <label className="text-xs text-gray-600 dark:text-slate-400 block mb-1">
+                              ผู้ส่ง
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSenderName}
+                              onChange={(e) => setEditingSenderName(e.target.value)}
+                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600 dark:text-slate-400 block mb-1">
+                              รายละเอียด
+                            </label>
+                            <textarea
+                              value={editingDetails}
+                              onChange={(e) => setEditingDetails(e.target.value)}
+                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                              rows={2}
+                            />
+                          </div>
+                          <div className="flex gap-1.5">
                             <button
-                              onClick={() => setEditingNote(doc.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-sm"
+                              onClick={() => handleSaveEdit(doc.id)}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-xs"
                             >
-                              ส่งคืน
+                              บันทึก
                             </button>
+                            <button
+                              onClick={() => setEditingDoc(null)}
+                              className="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-xs"
+                            >
+                              ยกเลิก
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid md:grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <span className="text-gray-600 dark:text-slate-400">ผู้ส่ง: </span>
+                              <span className="font-semibold text-gray-900 dark:text-slate-100">
+                                {doc.senderName}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600 dark:text-slate-400">สัปดาห์: </span>
+                              <span className="font-semibold text-gray-900 dark:text-slate-100">
+                                {doc.weekRange}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600 dark:text-slate-400">วันที่ส่ง: </span>
+                              <span className="font-semibold text-gray-900 dark:text-slate-100">
+                                {formatDate(doc.submittedDate)}
+                              </span>
+                            </div>
+                          </div>
+                          {doc.details && (
+                            <p className="text-gray-600 dark:text-slate-400 mt-2 text-xs">
+                              รายละเอียด: {doc.details}
+                            </p>
                           )}
                         </>
                       )}
                     </div>
+
+                    {/* Action Buttons */}
+                    {editingDoc !== doc.id && (
+                      <div className="flex flex-col gap-1.5 min-w-[140px]">
+                        {doc.status === 'processing' && (
+                          <button
+                            onClick={() => handleCompleteDocument(doc.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg transition-colors text-sm"
+                          >
+                            รับคืน
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {doc.staffNote && (

@@ -25,7 +25,6 @@ function migrateV0toV1(data: unknown[]): Document[] {
       ...record,
       // Ensure all required fields exist
       history: record.history || [],
-      priority: record.priority || 'normal',
     } as Document;
   });
 }
