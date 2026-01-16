@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Department, Document, DocumentStatus } from '@/types/document';
-import { getDocumentsByStatus, updateDocument } from '@/utils/storage';
-import { useToast } from '@/contexts/ToastContext';
+import { Department, Document, DocumentStatus } from '@/src/domain/entities';
+import { updateDocument, getDocumentsByStatus } from '@/utils/storage';
+import { useToast } from '@/src/presentation/contexts';
 
-const departments: Department[] = ['ทะเบียน', 'การเงิน', 'วิชาการ', 'ธุรการ', 'บุคคล', 'พัสดุ', 'อาคารสถานที่', 'IT/เทคโนโลยี'];
+const departments: Department[] = ['NIGHT MED', 'MED NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER'];
 
 export default function ManagePage() {
   const toast = useToast();

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import { ToastProvider } from "@/contexts/ToastContext";
+import Navbar from "@/src/presentation/components/Navbar";
+import { ToastProvider } from "@/src/presentation/contexts/ToastContext";
 
 export const metadata: Metadata = {
   title: "ระบบติดตามเอกสาร - Document Tracking System",

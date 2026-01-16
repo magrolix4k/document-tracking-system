@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Department, Document } from '@/types/document';
+import { Department, Document } from '@/src/domain/entities';
 import { getAllDocuments, getDocumentsByDepartment } from '@/utils/storage';
+import { DEPARTMENTS } from '@/src/shared/constants';
 
-const departments: Department[] = ['ทะเบียน', 'การเงิน', 'วิชาการ', 'ธุรการ', 'บุคคล', 'พัสดุ', 'อาคารสถานที่', 'IT/เทคโนโลยี'];
+const departments: Department[] = DEPARTMENTS;
 
 export default function ChartsPage() {
   const [allDocs, setAllDocs] = useState<Document[]>([]);

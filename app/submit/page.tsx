@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Department, DocumentType, Priority } from '@/types/document';
+import { Department, DocumentType, Priority } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/src/presentation/contexts';
 
-const departments: Department[] = ['ทะเบียน', 'การเงิน', 'วิชาการ', 'ธุรการ', 'บุคคล', 'พัสดุ', 'อาคารสถานที่', 'IT/เทคโนโลยี'];
+const departments: Department[] = ['NIGHT MED', 'MED NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER'];
 const documentTypes: DocumentType[] = ['ใบลา', 'หนังสือรับรอง', 'ใบรับรองนักศึกษา', 'เอกสารทั่วไป'];
 
 export default function SubmitPage() {
   const toast = useToast();
   const [senderName, setSenderName] = useState('');
-  const [department, setDepartment] = useState<Department>('ทะเบียน');
+  const [department, setDepartment] = useState<Department>('NIGHT MED');
   const [documentType, setDocumentType] = useState<DocumentType>('ใบลา');
   const [priority, setPriority] = useState<Priority>('normal');
   const [details, setDetails] = useState('');

@@ -1,14 +1,13 @@
+// Domain Entity - ข้อมูลหลักของเอกสาร
+
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
-
-export type Department = 'ทะเบียน' | 'การเงิน' | 'วิชาการ' | 'ธุรการ' | 'บุคคล' | 'พัสดุ' | 'อาคารสถานที่' | 'IT/เทคโนโลยี';
-
+export type Department = 'NIGHT MED' | 'MED NIGHT PED' | 'OBG' | 'ENT' | 'EYE' | 'SKIN' | 'CHK' | 'ER';
 export type DocumentType = 'ใบลา' | 'หนังสือรับรอง' | 'ใบรับรองนักศึกษา' | 'เอกสารทั่วไป';
-
 export type Priority = 'normal' | 'urgent' | 'very-urgent';
 
 export interface HistoryEntry {
   timestamp: string;
-  action: string; // 'created' | 'received' | 'completed' | 'note_added' | 'note_updated'
+  action: string;
   staffName?: string;
   oldValue?: string;
   newValue?: string;
@@ -16,7 +15,7 @@ export interface HistoryEntry {
 }
 
 export interface Document {
-  id: string; // DOC-20260116-001
+  id: string;
   senderName: string;
   department: Department;
   documentType: DocumentType;
@@ -30,9 +29,18 @@ export interface Document {
   history: HistoryEntry[];
 }
 
-export interface DepartmentStats {
+// DTO สำหรับการสร้างเอกสารใหม่
+export interface CreateDocumentDto {
+  senderName: string;
   department: Department;
-  pending: number;
-  completedToday: number;
-  avgProcessingTime: number; // in hours
+  documentType: DocumentType;
+  details: string;
+  priority: Priority;
+}
+
+// DTO สำหรับการอัปเดตสถานะ
+export interface UpdateDocumentStatusDto {
+  status: DocumentStatus;
+  staffName?: string;
+  note?: string;
 }

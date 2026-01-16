@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Department, DepartmentStats, Document } from '@/types/document';
+import { Document } from '@/src/domain/entities';
+import { Department } from '@/src/domain/entities';
+
+interface DepartmentStats {
+  department: Department;
+  pending: number;
+  completedToday: number;
+  avgProcessingTime: number;
+}
 import { 
   getAllDocuments, 
   getDocumentsByDepartment, 
@@ -11,9 +19,10 @@ import {
   getCompletedThisMonth,
   getCompletedThisYear
 } from '@/utils/storage';
+import { DEPARTMENTS } from '@/src/shared/constants';
 import * as XLSX from 'xlsx';
 
-const departments: Department[] = ['ทะเบียน', 'การเงิน', 'วิชาการ', 'ธุรการ', 'บุคคล', 'พัสดุ', 'อาคารสถานที่', 'IT/เทคโนโลยี'];
+const departments: Department[] = DEPARTMENTS;
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DepartmentStats[]>([]);

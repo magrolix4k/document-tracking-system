@@ -1,34 +1,66 @@
-import { Document, DocumentStatus, HistoryEntry } from '@/types/document';
+// Backward compatibility layer - uses Clean Architecture pattern
+import { LocalStorageDocumentRepository } from '@/src/infrastructure/persistence';
+import { DocumentService } from '@/src/application/services';
+import { CreateDocumentDto, UpdateDocumentStatusDto } from '@/src/domain/entities';
 
-const STORAGE_KEY = 'documents';
+const repository = new LocalStorageDocumentRepository();
+const documentService = new DocumentService(repository);
 
-// Add history entry to document
-export const addHistoryEntry = (
-  document: Document,
-  action: string,
-  staffName?: string,
-  oldValue?: string,
-  newValue?: string,
-  note?: string
-): HistoryEntry => {
-  const entry: HistoryEntry = {
-    timestamp: new Date().toISOString(),
-    action,
-    staffName,
-    oldValue,
-    newValue,
-    note,
+// Export old API for backward compatibility with existing pages
+export const getDocumentById = (id: string) => documentService.getDocumentById(id);
+export const getAllDocuments = () => documentService.getAllDocuments();
+export const searchDocuments = (filters: any) => documentService.searchDocuments(filters);
+
+export const addDocument = (
+  senderName: string,
+  department: any,
+  documentType: string,
+  details: string,
+  priority: string
+) => {
+  const dto: CreateDocumentDto = {
+    senderName,
+    department,
+    documentType: documentType as any,
+    details,
+    priority: priority as any,
   };
-  
-  if (!document.history) {
-    document.history = [];
-  }
-  document.history.push(entry);
-  
-  return entry;
+  return documentService.submitDocument(dto);
 };
 
-export const generateDocumentId = (): string => {
+export const updateDocument = (id: string, updated: any, staffName?: string) => {
+  const doc = documentService.getDocumentById(id);
+  if (doc) {
+    Object.assign(doc, updated);
+    if (staffName && updated.status) {
+      const dto: UpdateDocumentStatusDto = {
+        status: updated.status as any,
+        staffName,
+      };
+      documentService.updateDocumentStatus(id, dto);
+    } else {
+      repository.update(id, doc);
+    }
+  }
+};
+
+export const updateDocumentStatus = (id: string, status: string, staffName?: string) => {
+  const dto: UpdateDocumentStatusDto = {
+    status: status as any,
+    staffName,
+  };
+  documentService.updateDocumentStatus(id, dto);
+};
+
+export const addHistory = (id: string, action: string, staffName?: string, note?: string) => {
+  documentService.addHistory(id, { action, staffName, note });
+};
+
+export const deleteDocument = (id: string) => {
+  repository.delete(id);
+};
+
+export const generateDocumentId = () => {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
   const documents = getAllDocuments();
@@ -37,156 +69,97 @@ export const generateDocumentId = (): string => {
   return `DOC-${dateStr}-${nextNum}`;
 };
 
-export const getAllDocuments = (): Document[] => {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
-};
-
-export const getDocumentById = (id: string): Document | null => {
-  const documents = getAllDocuments();
-  return documents.find(doc => doc.id === id) || null;
-};
-
-export const saveDocument = (document: Document): void => {
-  const documents = getAllDocuments();
-  documents.push(document);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
-};
-
-export const updateDocument = (id: string, updates: Partial<Document>, staffName?: string): boolean => {
-  const documents = getAllDocuments();
-  const index = documents.findIndex(doc => doc.id === id);
-  
-  if (index === -1) return false;
-  
-  const oldDoc = documents[index];
-  
-  // Track status changes
-  if (updates.status && updates.status !== oldDoc.status) {
-    addHistoryEntry(
-      oldDoc,
-      updates.status === 'processing' ? 'received' : updates.status === 'completed' ? 'completed' : 'status_changed',
-      staffName,
-      oldDoc.status,
-      updates.status
-    );
+// Additional helper functions for backward compatibility
+export const saveDocument = (doc: any) => {
+  const docs = getAllDocuments();
+  const existingIndex = docs.findIndex(d => d.id === doc.id);
+  if (existingIndex >= 0) {
+    docs[existingIndex] = doc;
+  } else {
+    docs.push(doc);
   }
-  
-  // Track note changes
-  if (updates.staffNote !== undefined && updates.staffNote !== oldDoc.staffNote) {
-    addHistoryEntry(
-      oldDoc,
-      oldDoc.staffNote ? 'note_updated' : 'note_added',
-      staffName,
-      oldDoc.staffNote,
-      updates.staffNote
-    );
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('documents', JSON.stringify(docs));
   }
-  
-  documents[index] = { ...oldDoc, ...updates };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
-  return true;
 };
 
-export const getDocumentsByDepartment = (department: string): Document[] => {
-  const documents = getAllDocuments();
-  return documents.filter(doc => doc.department === department);
+export const getDocumentsByDepartment = (department: string) => {
+  return documentService.getDepartmentDocuments(department);
 };
 
-export const getDocumentsByStatus = (department: string, status: DocumentStatus): Document[] => {
-  const documents = getDocumentsByDepartment(department);
-  return documents.filter(doc => doc.status === status);
+export const getDocumentsByStatus = (departmentOrStatus: string, status?: string) => {
+  const docs = getAllDocuments();
+  // If status is provided, it's (department, status) call
+  if (status) {
+    return docs.filter(doc => doc.department === departmentOrStatus && doc.status === status);
+  }
+  // Otherwise it's just (status) call
+  return docs.filter(doc => doc.status === departmentOrStatus);
 };
 
-export const getCompletedToday = (department: string): number => {
-  const today = new Date().toISOString().split('T')[0];
-  const documents = getDocumentsByDepartment(department);
-  return documents.filter(doc => 
-    doc.status === 'completed' && 
-    doc.completedDate?.startsWith(today)
+export const getCompletedToday = (department?: string) => {
+  const today = new Date().toDateString();
+  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  return docs.filter(
+    doc =>
+      doc.status === 'completed' &&
+      new Date(doc.completedDate || '').toDateString() === today
   ).length;
 };
 
-export const getAverageProcessingTime = (department: string): number => {
-  const documents = getDocumentsByDepartment(department).filter(doc => 
-    doc.status === 'completed' && doc.submittedDate && doc.completedDate
-  );
+export const getCompletedThisWeek = (department?: string) => {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
   
-  if (documents.length === 0) return 0;
+  return docs.filter(
+    doc =>
+      doc.completedDate &&
+      doc.status === 'completed' &&
+      new Date(doc.completedDate) >= startOfWeek
+  ).length;
+};
+
+export const getCompletedThisMonth = (department?: string) => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
   
-  const totalHours = documents.reduce((sum, doc) => {
-    const submitted = new Date(doc.submittedDate);
-    const completed = new Date(doc.completedDate!);
-    const hours = (completed.getTime() - submitted.getTime()) / (1000 * 60 * 60);
-    return sum + hours;
+  return docs.filter(
+    doc =>
+      doc.completedDate &&
+      doc.status === 'completed' &&
+      new Date(doc.completedDate) >= startOfMonth
+  ).length;
+};
+
+export const getCompletedThisYear = (department?: string) => {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  
+  return docs.filter(
+    doc =>
+      doc.completedDate &&
+      doc.status === 'completed' &&
+      new Date(doc.completedDate) >= startOfYear
+  ).length;
+};
+
+export const getAverageProcessingTime = (department?: string) => {
+  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  const completed = docs.filter(doc => doc.status === 'completed');
+  if (completed.length === 0) return 0;
+  
+  const totalTime = completed.reduce((sum, doc) => {
+    const start = new Date(doc.submittedDate).getTime();
+    const end = new Date(doc.completedDate || '').getTime();
+    return sum + (end - start);
   }, 0);
   
-  return Math.round(totalHours / documents.length);
+  return Math.round(totalTime / (1000 * 60 * 60 * completed.length));
 };
 
-// Get start of week (Monday)
-const getStartOfWeek = (date: Date): Date => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
-  return new Date(d.setDate(diff));
-};
-
-// Get completed documents this week
-export const getCompletedThisWeek = (department?: string): number => {
-  const today = new Date();
-  const startOfWeek = getStartOfWeek(today);
-  startOfWeek.setHours(0, 0, 0, 0);
-  
-  const documents = department ? getDocumentsByDepartment(department) : getAllDocuments();
-  
-  return documents.filter(doc => {
-    if (doc.status !== 'completed' || !doc.completedDate) return false;
-    const completedDate = new Date(doc.completedDate);
-    return completedDate >= startOfWeek && completedDate <= today;
-  }).length;
-};
-
-// Get completed documents this month
-export const getCompletedThisMonth = (department?: string): number => {
-  const today = new Date();
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  
-  const documents = department ? getDocumentsByDepartment(department) : getAllDocuments();
-  
-  return documents.filter(doc => {
-    if (doc.status !== 'completed' || !doc.completedDate) return false;
-    const completedDate = new Date(doc.completedDate);
-    return completedDate >= startOfMonth && completedDate <= today;
-  }).length;
-};
-
-// Get completed documents this year
-export const getCompletedThisYear = (department?: string): number => {
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 1);
-  
-  const documents = department ? getDocumentsByDepartment(department) : getAllDocuments();
-  
-  return documents.filter(doc => {
-    if (doc.status !== 'completed' || !doc.completedDate) return false;
-    const completedDate = new Date(doc.completedDate);
-    return completedDate >= startOfYear && completedDate <= today;
-  }).length;
-};
-
-// Get all time statistics
-export const getAllTimeStats = () => {
-  const allDocs = getAllDocuments();
-  const completed = allDocs.filter(doc => doc.status === 'completed');
-  const pending = allDocs.filter(doc => doc.status === 'pending');
-  const processing = allDocs.filter(doc => doc.status === 'processing');
-  
-  return {
-    total: allDocs.length,
-    completed: completed.length,
-    pending: pending.length,
-    processing: processing.length,
-  };
-};
+// Type re-exports for backward compatibility
+export type { Document, Department, DocumentStatus, DocumentType, Priority } from '@/src/domain/entities';

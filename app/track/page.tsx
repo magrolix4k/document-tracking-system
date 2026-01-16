@@ -2,12 +2,13 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Document, Department } from '@/types/document';
+import { Document, Department } from '@/src/domain/entities';
 import { getDocumentById, getAllDocuments } from '@/utils/storage';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/src/presentation/contexts';
 
 function TrackPageContent() {
   const searchParams = useSearchParams();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const toast = useToast();
   const [documentId, setDocumentId] = useState('');
   const [document, setDocument] = useState<Document | null>(null);
@@ -164,14 +165,14 @@ function TrackPageContent() {
                   className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
                 >
                   <option value="all">ทุกแผนก</option>
-                  <option value="ทะเบียน">ทะเบียน</option>
-                  <option value="การเงิน">การเงิน</option>
-                  <option value="วิชาการ">วิชาการ</option>
-                  <option value="ธุรการ">ธุรการ</option>
-                  <option value="บุคคล">บุคคล</option>
-                  <option value="พัสดุ">พัสดุ</option>
-                  <option value="อาคารสถานที่">อาคารสถานที่</option>
-                  <option value="IT/เทคโนโลยี">IT/เทคโนโลยี</option>
+                  <option value="NIGHT MED">NIGHT MED</option>
+                  <option value="MED NIGHT PED">MED NIGHT PED</option>
+                  <option value="OBG">OBG</option>
+                  <option value="ENT">ENT</option>
+                  <option value="EYE">EYE</option>
+                  <option value="SKIN">SKIN</option>
+                  <option value="CHK">CHK</option>
+                  <option value="ER">ER</option>
                 </select>
                 <div className="grid grid-cols-2 gap-2">
                   <input

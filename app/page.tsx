@@ -75,14 +75,14 @@ export default function Home() {
             <div>
               <p className="font-semibold text-gray-900 dark:text-slate-100 mb-2 text-sm">แผนกที่รองรับ:</p>
               <ul className="list-disc list-inside space-y-1 text-sm columns-2">
-                <li>ทะเบียน</li>
-                <li>การเงิน</li>
-                <li>วิชาการ</li>
-                <li>ธุรการ</li>
-                <li>บุคคล</li>
-                <li>พัสดุ</li>
-                <li>อาคารสถานที่</li>
-                <li>IT/เทคโนโลยี</li>
+                <li>NIGHT MED</li>
+                <li>MED NIGHT PED</li>
+                <li>OBG</li>
+                <li>ENT</li>
+                <li>EYE</li>
+                <li>SKIN</li>
+                <li>CHK</li>
+                <li>ER</li>
               </ul>
             </div>
             <div>
