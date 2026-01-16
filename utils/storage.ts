@@ -185,4 +185,4 @@ export const getAverageProcessingTime = (department?: string) => {
 };
 
 // Type re-exports for backward compatibility
-export type { Document, Department, DocumentStatus, DocumentType, Priority } from '@/src/domain/entities';
+export type { Document, Department, DocumentStatus } from '@/src/domain/entities';

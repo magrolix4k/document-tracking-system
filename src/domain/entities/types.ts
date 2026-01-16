@@ -2,8 +2,6 @@
 export type {
   DocumentStatus,
   Department,
-  DocumentType,
-  Priority,
   HistoryEntry,
   Document,
   CreateDocumentDto,

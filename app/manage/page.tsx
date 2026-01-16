@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Department, Document, DocumentStatus } from '@/src/domain/entities';
-import { updateDocument, getDocumentsByStatus, deleteDocument } from '@/utils/storage';
+import { updateDocument, getDocumentsByStatus } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 
 const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR'];
@@ -12,8 +12,6 @@ export default function ManagePage() {
   const [selectedDept, setSelectedDept] = useState<Department | 'ทั้งหมด'>('ทั้งหมด');
   const [activeTab, setActiveTab] = useState<DocumentStatus>('processing');
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [editingNote, setEditingNote] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState('');
   const [editingDoc, setEditingDoc] = useState<string | null>(null);
   const [editingSenderName, setEditingSenderName] = useState('');
   const [editingDetails, setEditingDetails] = useState('');
@@ -58,21 +56,6 @@ export default function ManagePage() {
     }
   };
 
-  const handleReceiveDocument = (docId: string) => {
-    if (confirm('ยืนยันการรับเอกสารนี้?')) {
-      updateDocument(
-        docId,
-        {
-          status: 'processing',
-          receivedDate: new Date().toISOString(),
-        }
-      );
-      toast.success(`รับเอกสาร ${docId} สำเร็จ`);
-      loadDocuments();
-      updateStatusCounts();
-    }
-  };
-
   const handleCompleteDocument = (docId: string) => {
     if (confirm('ยืนยันการรับคืนเอกสารนี้?')) {
       updateDocument(
@@ -86,12 +69,6 @@ export default function ManagePage() {
       loadDocuments();
       updateStatusCounts();
     }
-  };
-
-  const handleEditDocument = (doc: Document) => {
-    setEditingDoc(doc.id);
-    setEditingSenderName(doc.senderName);
-    setEditingDetails(doc.details);
   };
 
   const handleSaveEdit = (docId: string) => {
@@ -110,15 +87,6 @@ export default function ManagePage() {
     toast.success('แก้ไขเอกสารสำเร็จ');
     setEditingDoc(null);
     loadDocuments();
-  };
-
-  const handleDeleteDocument = (docId: string) => {
-    if (confirm('ยืนยันการยกเลิกเอกสารนี้? (ไม่สามารถกู้คืนได้)')) {
-      deleteDocument(docId);
-      toast.success(`ยกเลิกเอกสาร ${docId} สำเร็จ`);
-      loadDocuments();
-      updateStatusCounts();
-    }
   };
 
   const formatDate = (dateString: string) => {
