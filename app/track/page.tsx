@@ -4,9 +4,11 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Document, Department } from '@/types/document';
 import { getDocumentById, getAllDocuments } from '@/utils/storage';
+import { useToast } from '@/contexts/ToastContext';
 
 function TrackPageContent() {
   const searchParams = useSearchParams();
+  const toast = useToast();
   const [documentId, setDocumentId] = useState('');
   const [document, setDocument] = useState<Document | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -312,7 +314,7 @@ function TrackPageContent() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="text-gray-600 dark:text-slate-400 text-xs font-semibold">เลขที่เอกสาร</p>
-                    <p className="font-semibold text-gray-900 dark:text-slate-100">{document.id}</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100 break-all mt-1">{document.id}</p>
                   </div>
                   <div>
                     <p className="text-gray-600 dark:text-slate-400 text-xs font-semibold">ชื่อผู้ส่ง</p>

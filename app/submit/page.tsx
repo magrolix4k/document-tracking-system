@@ -72,9 +72,21 @@ export default function SubmitPage() {
             </h2>
             <div className="bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600 rounded-lg p-4 mb-4">
               <p className="text-gray-700 dark:text-slate-300 mb-1 text-sm">เลขที่เอกสาร</p>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                {submittedDoc}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                  {submittedDoc}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(submittedDoc!);
+                    toast.success('คัดลอกเลขที่เอกสารแล้ว');
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
+                  title="คัดลอกเลขที่เอกสาร"
+                >
+                  📋
+                </button>
+              </div>
             </div>
             <p className="text-gray-600 dark:text-slate-400 mb-6 text-sm">
               กรุณาจดเลขที่เอกสารนี้ไว้สำหรับติดตามสถานะ

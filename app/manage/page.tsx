@@ -229,6 +229,16 @@ export default function ManagePage() {
                         <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm">
                           {doc.id}
                         </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(doc.id);
+                            toast.success('คัดลอกเลขที่เอกสารแล้ว');
+                          }}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white p-1 rounded text-xs transition-colors"
+                          title="คัดลอกเลขที่เอกสาร"
+                        >
+                          📋
+                        </button>
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${
                             getStatusBadge(doc.status).color
