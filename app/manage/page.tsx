@@ -23,6 +23,7 @@ export default function ManagePage() {
   useEffect(() => {
     loadDocuments();
     updateStatusCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDept, activeTab]);
 
   const updateStatusCounts = () => {

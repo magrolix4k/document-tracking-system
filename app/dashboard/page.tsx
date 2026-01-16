@@ -9,8 +9,7 @@ import {
   getAverageProcessingTime,
   getCompletedThisWeek,
   getCompletedThisMonth,
-  getCompletedThisYear,
-  getAllTimeStats
+  getCompletedThisYear
 } from '@/utils/storage';
 import * as XLSX from 'xlsx';
 
@@ -162,7 +161,7 @@ export default function DashboardPage() {
   };
 
   const exportStatsToExcel = () => {
-    const statsData = stats.map((stat) => ({
+    const statsData: Array<Record<string, string | number>> = stats.map((stat) => ({
       'แผนก': stat.department,
       'รอดำเนินการ': stat.pending,
       'เสร็จวันนี้': stat.completedToday,
@@ -170,7 +169,7 @@ export default function DashboardPage() {
     }));
 
     statsData.push({
-      'แผนก': 'รวมทั้งหมด' as any,
+      'แผนก': 'รวมทั้งหมด',
       'รอดำเนินการ': totalPending,
       'เสร็จวันนี้': totalCompletedToday,
       'เวลาเฉลี่ย (ชั่วโมง)': avgAllDepartments,
@@ -442,7 +441,7 @@ export default function DashboardPage() {
               </label>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'pending' | 'processing' | 'completed')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:bg-slate-700 dark:text-slate-100 text-sm"
               >
                 <option value="all">ทั้งหมด</option>
@@ -458,7 +457,7 @@ export default function DashboardPage() {
               </label>
               <select
                 value={filterDepartment}
-                onChange={(e) => setFilterDepartment(e.target.value as any)}
+                onChange={(e) => setFilterDepartment(e.target.value as 'all' | Department)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:bg-slate-700 dark:text-slate-100 text-sm"
               >
                 <option value="all">ทั้งหมด</option>

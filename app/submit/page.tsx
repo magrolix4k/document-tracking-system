@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Department, DocumentType, Priority } from '@/types/document';
-import { generateDocumentId, saveDocument, addHistoryEntry } from '@/utils/storage';
+import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/contexts/ToastContext';
 
 const departments: Department[] = ['ทะเบียน', 'การเงิน', 'วิชาการ', 'ธุรการ', 'บุคคล', 'พัสดุ', 'อาคารสถานที่', 'IT/เทคโนโลยี'];

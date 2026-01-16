@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Document, Department } from '@/types/document';
 import { getDocumentById, getAllDocuments } from '@/utils/storage';
 
-export default function TrackPage() {
+function TrackPageContent() {
   const searchParams = useSearchParams();
   const [documentId, setDocumentId] = useState('');
   const [document, setDocument] = useState<Document | null>(null);
@@ -25,6 +25,7 @@ export default function TrackPage() {
       setDocumentId(id);
       handleSearch(id);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleSearch = (id?: string) => {
@@ -157,7 +158,7 @@ export default function TrackPage() {
                 />
                 <select
                   value={advancedFilters.department}
-                  onChange={(e) => setAdvancedFilters({...advancedFilters, department: e.target.value as any})}
+                  onChange={(e) => setAdvancedFilters({...advancedFilters, department: e.target.value as 'all' | Department})}
                   className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
                 >
                   <option value="all">ทุกแผนก</option>
@@ -392,5 +393,20 @@ export default function TrackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TrackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 py-6 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🔍</div>
+          <p className="text-gray-600 dark:text-slate-400">กำลังโหลด...</p>
+        </div>
+      </div>
+    }>
+      <TrackPageContent />
+    </Suspense>
   );
 }
