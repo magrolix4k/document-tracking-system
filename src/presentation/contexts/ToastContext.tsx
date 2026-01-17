@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
 import Toast, { ToastType } from '../components/Toast';
 
 interface ToastItem {
@@ -20,16 +20,21 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastIdRef = useRef(0);
+
+  // สร้าง id ที่ไม่ซ้ำแน่นอน
   const showToast = (message: string, type: ToastType = 'info') => {
-    const id = Math.random().toString(36).substring(7);
+    toastIdRef.current += 1;
+    const id = `${Date.now()}-${toastIdRef.current}`;
     setToasts((prev) => [...prev, { id, message, type }]);
   };
 
-  const removeToast = (id: string) => {
+  // ลบเฉพาะ toast ที่ปิด ไม่ลบทั้งหมด
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
 
   const success = (message: string) => showToast(message, 'success');
   const error = (message: string) => showToast(message, 'error');
@@ -40,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast, success, error, info, warning }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+      <div className="toast-container-fixed-right" style={{top: '72px'}}>
         {toasts.map((toast) => (
           <Toast
             key={toast.id}

@@ -133,7 +133,7 @@ export default function SubmitPage() {
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-700 dark:text-white transition-colors"
+                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none"
                 placeholder="กรอกชื่อ-นามสกุล"
                 required
               />
@@ -147,10 +147,10 @@ export default function SubmitPage() {
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as Department)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-700 dark:text-white transition-colors"
+                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none"
               >
                 {departments.map((dept) => (
-                  <option key={dept} value={dept}>
+                  <option key={dept} value={dept} className="bg-white dark:bg-slate-700">
                     {dept}
                   </option>
                 ))}
@@ -176,7 +176,7 @@ export default function SubmitPage() {
               <textarea
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-700 dark:text-white transition-colors"
+                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none resize-none"
                 rows={3}
                 placeholder="กรอกรายละเอียดเพิ่มเติม (ถ้ามี)"
               />

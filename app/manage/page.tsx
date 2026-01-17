@@ -233,7 +233,7 @@ export default function ManagePage() {
                               type="text"
                               value={editingSenderName}
                               onChange={(e) => setEditingSenderName(e.target.value)}
-                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none text-sm"
                             />
                           </div>
                           <div>
@@ -243,7 +243,7 @@ export default function ManagePage() {
                             <textarea
                               value={editingDetails}
                               onChange={(e) => setEditingDetails(e.target.value)}
-                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                              className="w-full px-2 py-1.5 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none resize-none text-sm"
                               rows={2}
                             />
                           </div>

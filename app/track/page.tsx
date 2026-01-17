@@ -8,13 +8,14 @@ import { useToast } from '@/src/presentation/contexts';
 
 function TrackPageContent() {
   const searchParams = useSearchParams();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const toast = useToast();
   const [documentId, setDocumentId] = useState('');
   const [document, setDocument] = useState<Document | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<Document[]>([]);
+  const [recentDocuments, setRecentDocuments] = useState<string[]>([]);
+  const [pendingDocuments, setPendingDocuments] = useState<Document[]>([]);
   const [advancedFilters, setAdvancedFilters] = useState({
     senderName: '',
     department: 'all' as 'all' | Department,
@@ -28,13 +29,62 @@ function TrackPageContent() {
       setDocumentId(id);
       handleSearch(id);
     }
+    // Load recent documents from localStorage
+    loadRecentDocuments();
+    // Load pending/overdue documents
+    loadPendingDocuments();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  const loadRecentDocuments = () => {
+    const recent = localStorage.getItem('recentDocuments');
+    if (recent) {
+      try {
+        const parsed = JSON.parse(recent);
+        setRecentDocuments(parsed.slice(0, 10)); // Keep only last 10
+      } catch (e) {
+        console.error('Failed to parse recent documents', e);
+      }
+    }
+  };
+
+  const saveToRecent = (docId: string) => {
+    const recent = localStorage.getItem('recentDocuments');
+    let recentList: string[] = [];
+    if (recent) {
+      try {
+        recentList = JSON.parse(recent);
+      } catch (e) {
+        console.error('Failed to parse recent documents', e);
+      }
+    }
+    // Remove if already exists and add to front
+    recentList = recentList.filter(id => id !== docId);
+    recentList.unshift(docId);
+    // Keep only last 10
+    recentList = recentList.slice(0, 10);
+    localStorage.setItem('recentDocuments', JSON.stringify(recentList));
+    setRecentDocuments(recentList);
+  };
+
+  const loadPendingDocuments = () => {
+    const allDocs = getAllDocuments();
+    
+    // Get all pending/processing documents
+    const pending = allDocs.filter(doc => {
+      return doc.status === 'pending' || doc.status === 'processing';
+    });
+    
+    // Sort by oldest first (submitted date ascending)
+    pending.sort((a, b) => new Date(a.submittedDate).getTime() - new Date(b.submittedDate).getTime());
+    
+    setPendingDocuments(pending);
+  };
 
   const handleSearch = (id?: string) => {
     const searchId = id || documentId;
     if (!searchId.trim()) {
-      alert('กรุณากรอกเลขที่เอกสาร');
+      toast.warning('กรุณากรอกเลขที่เอกสาร');
       return;
     }
 
@@ -42,9 +92,12 @@ function TrackPageContent() {
     if (doc) {
       setDocument(doc);
       setNotFound(false);
+      toast.success(`พบเอกสาร ${searchId.trim()}`);
+      saveToRecent(searchId.trim());
     } else {
       setDocument(null);
       setNotFound(true);
+      toast.error(`ไม่พบเอกสารหมายเลข ${searchId.trim()}`);
     }
   };
 
@@ -85,6 +138,25 @@ function TrackPageContent() {
     });
   };
 
+  const formatShortDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const getDaysAgoText = (dateString: string) => {
+    const days = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (24 * 60 * 60 * 1000));
+    if (days === 0) {
+      return `วันนี้ (${formatShortDate(dateString)})`;
+    } else if (days === 1) {
+      return `เมื่อวาน (${formatShortDate(dateString)})`;
+    } else {
+      return `${days} วันแล้ว (${formatShortDate(dateString)})`;
+    }
+  };
+
   const handleAdvancedSearch = () => {
     const allDocs = getAllDocuments();
     const filtered = allDocs.filter(doc => {
@@ -111,6 +183,55 @@ function TrackPageContent() {
             </p>
           </div>
 
+          {/* Recent Documents */}
+          {recentDocuments.length > 0 && (
+            <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-3 text-sm flex items-center gap-2">
+                <span>🔔</span> เอกสารล่าสุดที่ค้นหา
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {recentDocuments.map((docId) => (
+                  <button
+                    key={docId}
+                    onClick={() => {
+                      setDocumentId(docId);
+                      handleSearch(docId);
+                    }}
+                    className="bg-white dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-blue-700 dark:text-blue-400 transition-colors"
+                  >
+                    {docId}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pending/Overdue Documents */}
+          {pendingDocuments.length > 0 && (
+            <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <h3 className="font-bold text-amber-900 dark:text-amber-300 mb-3 text-sm flex items-center gap-2">
+                <span>⚠️</span> เอกสารที่ส่งไปนานแล้วแต่ยังไม่ได้รับคืน ({pendingDocuments.length} รายการ)
+              </h3>
+              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
+                {pendingDocuments.map((doc) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => {
+                      setDocumentId(doc.id);
+                      handleSearch(doc.id);
+                    }}
+                    className="bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-slate-700 border border-amber-300 dark:border-amber-700 px-2 py-1.5 rounded text-left transition-colors"
+                  >
+                    <p className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 truncate">{doc.id}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {getDaysAgoText(doc.submittedDate)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Search Form */}
           <div className="mb-6 max-w-lg mx-auto">
             <div className="flex gap-2 mb-2">
@@ -119,7 +240,7 @@ function TrackPageContent() {
                 value={documentId}
                 onChange={(e) => setDocumentId(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-700 dark:text-white transition-colors text-sm"
+                className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none text-sm"
                 placeholder="เช่น DOC-20260116-001"
               />
               <button
@@ -144,12 +265,12 @@ function TrackPageContent() {
                   placeholder="ชื่อผู้ส่ง"
                   value={advancedFilters.senderName}
                   onChange={(e) => setAdvancedFilters({...advancedFilters, senderName: e.target.value})}
-                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none text-sm"
                 />
                 <select
                   value={advancedFilters.department}
                   onChange={(e) => setAdvancedFilters({...advancedFilters, department: e.target.value as 'all' | Department})}
-                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
                 >
                   <option value="all">ทุกแผนก</option>
                   <option value="NIGHT MED">NIGHT MED</option>
@@ -169,13 +290,13 @@ function TrackPageContent() {
                     type="date"
                     value={advancedFilters.dateFrom}
                     onChange={(e) => setAdvancedFilters({...advancedFilters, dateFrom: e.target.value})}
-                    className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
+                    className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
                   />
                   <input
                     type="date"
                     value={advancedFilters.dateTo}
                     onChange={(e) => setAdvancedFilters({...advancedFilters, dateTo: e.target.value})}
-                    className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white"
+                    className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
                   />
                 </div>
                 <button

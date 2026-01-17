@@ -1,3 +1,106 @@
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5), 0 0 60px rgba(59, 130, 246, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.animate-slide-out {
+  animation: slide-out 0.25s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+/* High-tech glassmorphism for cards */
+.glass-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.2), 
+              0 4px 16px 0 rgba(0, 0, 0, 0.3),
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(16px);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 12px 48px 0 rgba(59, 130, 246, 0.3), 
+              0 6px 24px 0 rgba(0, 0, 0, 0.4),
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+/* High-tech shadow with glow effect */
+.hi-tech-shadow {
+  box-shadow: 0 4px 24px 0 rgba(59, 130, 246, 0.25), 
+              0 2px 12px 0 rgba(0, 0, 0, 0.2),
+              0 0 0 1px rgba(59, 130, 246, 0.1);
+  transition: all 0.3s ease;
+}
+
+.hi-tech-shadow:hover {
+  box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.4), 
+              0 4px 16px 0 rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+/* Force toast container to top right */
+.toast-container-fixed-right {
+  position: fixed !important;
+  top: 72px !important; /* default for desktop, override inline for mobile if needed */
+  right: 1rem !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 9999 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .toast-container-fixed-right {
+    top: 60px !important;
+  }
+}
+/* Force toast container to top left */
+.toast-container-fixed-left {
+  position: fixed !important;
+  top: 1rem !important;
+  left: 1rem !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 9999 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: auto;
+  max-width: 20rem;
+  pointer-events: none;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

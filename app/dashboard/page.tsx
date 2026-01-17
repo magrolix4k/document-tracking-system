@@ -364,7 +364,7 @@ export default function DashboardPage() {
                           <td className="text-center py-2 px-2">
                             <div className="flex flex-col items-center">
                               <span className="font-bold text-gray-900 dark:text-slate-100">{workload}</span>
-                              <span className="text-[10px]">{workloadLevel}</span>
+                              <span className="text-[10px] text-gray-700 dark:text-slate-300">{workloadLevel}</span>
                             </div>
                           </td>
                         </tr>
@@ -406,7 +406,7 @@ export default function DashboardPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as 'all' | 'processing' | 'completed')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
               >
                 <option value="all">ทั้งหมด</option>
                 <option value="processing">ส่งเอกสาร</option>
@@ -421,7 +421,7 @@ export default function DashboardPage() {
               <select
                 value={filterDepartment}
                 onChange={(e) => setFilterDepartment(e.target.value as 'all' | Department)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
               >
                 <option value="all">ทั้งหมด</option>
                 {departments.map((dept) => (
