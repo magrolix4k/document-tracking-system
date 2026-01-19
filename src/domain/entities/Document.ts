@@ -1,7 +1,7 @@
 // Domain Entity - ข้อมูลหลักของเอกสาร
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
-export type Department = 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED' | 'OBG' | 'ENT' | 'EYE' | 'SKIN' | 'CHK' | 'ER' | 'SUR';
+export type Department = 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED' | 'OBG' | 'ENT' | 'EYE' | 'SKIN' | 'CHK' | 'ER' | 'SUR'| 'GI';
 
 export interface HistoryEntry {
   timestamp: string;

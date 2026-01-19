@@ -5,7 +5,7 @@ import { Department, Document, DocumentStatus } from '@/src/domain/entities';
 import { updateDocument, getDocumentsByStatus } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 
-const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR'];
+const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR', 'GI'];
 
 export default function ManagePage() {
   const toast = useToast();

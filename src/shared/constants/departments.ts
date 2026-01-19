@@ -13,6 +13,7 @@ export const DEPARTMENTS: Department[] = [
   'CHK',
   'ER',
   'SUR',
+  'GI'
 ];
 
 export const DOCUMENT_TYPES = [
