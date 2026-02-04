@@ -1,49 +1,104 @@
-// Backward compatibility layer - uses Clean Architecture pattern
-import { LocalStorageDocumentRepository } from '@/src/infrastructure/persistence';
-import { DocumentService } from '@/src/application/services';
-import { CreateDocumentDto, UpdateDocumentStatusDto } from '@/src/domain/entities';
+// Backward compatibility layer - uses Firebase for data persistence
+'use client';
 
-const repository = new LocalStorageDocumentRepository();
-const documentService = new DocumentService(repository);
+import { firebaseDocumentService } from '@/src/infrastructure/firebase';
+import { Document } from '@/src/domain/entities';
+
+// Cache for in-memory storage (for better performance during session)
+let documentCache: Document[] | null = null;
+let cacheInitialized = false;
+
+// Initialize cache on first load
+async function initializeCache() {
+  if (!cacheInitialized && typeof window !== 'undefined') {
+    try {
+      documentCache = await firebaseDocumentService.getAllDocuments();
+      cacheInitialized = true;
+    } catch (error) {
+      console.error('Error initializing cache:', error);
+      documentCache = [];
+      cacheInitialized = true;
+    }
+  }
+}
 
 // Export old API for backward compatibility with existing pages
-export const getDocumentById = (id: string) => documentService.getDocumentById(id);
-export const getAllDocuments = () => documentService.getAllDocuments();
-export const searchDocuments = (filters: any) => documentService.searchDocuments(filters);
-
-export const updateDocument = (id: string, updated: any, staffName?: string) => {
+export const getDocumentById = async (id: string) => {
   try {
-    const docs = getAllDocuments();
-    const index = docs.findIndex(d => d.id === id);
-    
-    if (index === -1) {
+    return await firebaseDocumentService.getDocumentById(id);
+  } catch (error) {
+    console.error('Error getting document:', error);
+    return null;
+  }
+};
+
+export const getAllDocuments = async (): Promise<Document[]> => {
+  try {
+    if (!cacheInitialized) {
+      await initializeCache();
+    }
+    return documentCache || [];
+  } catch (error) {
+    console.error('Error getting all documents:', error);
+    return [];
+  }
+};
+
+export const searchDocuments = async (filters: any) => {
+  try {
+    const docs = await getAllDocuments();
+    return docs.filter(doc => {
+      if (filters.senderName && !doc.senderName.toLowerCase().includes(filters.senderName.toLowerCase())) {
+        return false;
+      }
+      if (filters.department && filters.department !== 'all' && doc.department !== filters.department) {
+        return false;
+      }
+      return true;
+    });
+  } catch (error) {
+    console.error('Error searching documents:', error);
+    return [];
+  }
+};
+
+export const updateDocument = async (id: string, updated: any, staffName?: string) => {
+  try {
+    const doc = await getDocumentById(id);
+    if (!doc) {
       console.error('Document not found:', id);
       return;
     }
 
-    // Merge updates into the document
-    const doc = docs[index];
     const updatedDoc = { ...doc, ...updated };
 
     // Add history entry if status is changing
     if (updated.status && updated.status !== doc.status) {
+      const historyEntry: any = {
+        timestamp: new Date().toISOString(),
+        action: updated.status === 'processing' ? 'received' : updated.status === 'completed' ? 'completed' : 'updated',
+        newValue: updated.status,
+      };
+      
+      // Only add staffName if it exists
+      if (staffName) {
+        historyEntry.staffName = staffName;
+      }
+      
       updatedDoc.history = [
         ...(doc.history || []),
-        {
-          timestamp: new Date().toISOString(),
-          action: updated.status === 'processing' ? 'received' : updated.status === 'completed' ? 'completed' : 'updated',
-          staffName: staffName || undefined,
-          newValue: updated.status,
-        }
+        historyEntry
       ];
     }
 
-    // Update the document in the array
-    docs[index] = updatedDoc;
+    await firebaseDocumentService.updateDocument(id, updatedDoc);
     
-    // Save directly to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('documents', JSON.stringify(docs));
+    // Update cache
+    if (documentCache) {
+      const index = documentCache.findIndex(d => d.id === id);
+      if (index >= 0) {
+        documentCache[index] = updatedDoc;
+      }
     }
   } catch (error) {
     console.error('Error updating document:', error);
@@ -51,31 +106,53 @@ export const updateDocument = (id: string, updated: any, staffName?: string) => 
   }
 };
 
-export const updateDocumentStatus = (id: string, status: string, staffName?: string) => {
-  const dto: UpdateDocumentStatusDto = {
-    status: status as any,
-    staffName,
-  };
-  documentService.updateDocumentStatus(id, dto);
-};
-
-export const addHistory = (id: string, action: string, staffName?: string, note?: string) => {
-  documentService.addHistory(id, { action, staffName, note });
-};
-
-export const deleteDocument = (id: string) => {
+export const updateDocumentStatus = async (id: string, status: string, staffName?: string) => {
   try {
-    const docs = getAllDocuments();
-    const filtered = docs.filter(doc => doc.id !== id);
-    
-    if (docs.length === filtered.length) {
-      console.warn('Document not found for deletion:', id);
+    await updateDocument(id, { status }, staffName);
+  } catch (error) {
+    console.error('Error updating document status:', error);
+    throw error;
+  }
+};
+
+export const addHistory = async (id: string, action: string, staffName?: string, note?: string) => {
+  try {
+    const doc = await getDocumentById(id);
+    if (!doc) {
+      console.error('Document not found:', id);
       return;
     }
+
+    const historyEntry = {
+      timestamp: new Date().toISOString(),
+      action,
+      staffName,
+      note,
+    };
+
+    const updatedHistory = [...(doc.history || []), historyEntry];
+    await firebaseDocumentService.updateDocument(id, { history: updatedHistory });
+
+    // Update cache
+    if (documentCache) {
+      const index = documentCache.findIndex(d => d.id === id);
+      if (index >= 0) {
+        documentCache[index].history = updatedHistory;
+      }
+    }
+  } catch (error) {
+    console.error('Error adding history:', error);
+    throw error;
+  }
+};
+
+export const deleteDocument = async (id: string) => {
+  try {
+    await firebaseDocumentService.deleteDocument(id);
     
-    // Save directly to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('documents', JSON.stringify(filtered));
+    // Update cache
+    if (documentCache) {
+      documentCache = documentCache.filter(doc => doc.id !== id);
     }
   } catch (error) {
     console.error('Error deleting document:', error);
@@ -83,60 +160,72 @@ export const deleteDocument = (id: string) => {
   }
 };
 
-export const generateDocumentId = () => {
+export const generateDocumentId = async () => {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
-  const documents = getAllDocuments();
-  const todayDocs = documents.filter(doc => doc.id.includes(dateStr));
+  const documents = await getAllDocuments();
+  const todayDocs = documents.filter(doc => doc && doc.id && String(doc.id).includes(dateStr));
   const nextNum = (todayDocs.length + 1).toString().padStart(3, '0');
   return `DOC-${dateStr}-${nextNum}`;
 };
 
 // Additional helper functions for backward compatibility
-export const saveDocument = (doc: any) => {
-  const docs = getAllDocuments();
-  const existingIndex = docs.findIndex(d => d.id === doc.id);
-  if (existingIndex >= 0) {
-    docs[existingIndex] = doc;
-  } else {
-    docs.push(doc);
-  }
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('documents', JSON.stringify(docs));
+export const saveDocument = async (doc: Document) => {
+  try {
+    await firebaseDocumentService.saveDocument(doc);
+    
+    // Update cache
+    if (documentCache) {
+      const existingIndex = documentCache.findIndex(d => d.id === doc.id);
+      if (existingIndex >= 0) {
+        documentCache[existingIndex] = doc;
+      } else {
+        documentCache.push(doc);
+      }
+    }
+  } catch (error) {
+    console.error('Error saving document:', error);
+    throw error;
   }
 };
 
-export const getDocumentsByDepartment = (department: string) => {
-  return documentService.getDepartmentDocuments(department);
-};
-
-export const getDocumentsByStatus = (departmentOrStatus: string, status?: string) => {
-  const docs = getAllDocuments();
-  // If status is provided, it's (department, status) call
-  if (status) {
-    return docs.filter(doc => doc.department === departmentOrStatus && doc.status === status);
+export const getDocumentsByDepartment = async (department: string) => {
+  try {
+    return await firebaseDocumentService.getDocumentsByDepartment(department);
+  } catch (error) {
+    console.error('Error getting documents by department:', error);
+    return [];
   }
-  // Otherwise it's just (status) call
-  return docs.filter(doc => doc.status === departmentOrStatus);
 };
 
-export const getCompletedToday = (department?: string) => {
+export const getDocumentsByStatus = async (departmentOrStatus: string, status?: string) => {
+  try {
+    return await firebaseDocumentService.getDocumentsByStatus(departmentOrStatus, status);
+  } catch (error) {
+    console.error('Error getting documents by status:', error);
+    return [];
+  }
+};
+
+export const getCompletedToday = async (department?: string) => {
   const today = new Date().toDateString();
-  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
-  return docs.filter(
+  const docs = await getAllDocuments();
+  const filtered = department ? docs.filter(doc => doc.department === department) : docs;
+  return filtered.filter(
     doc =>
       doc.status === 'completed' &&
       new Date(doc.completedDate || '').toDateString() === today
   ).length;
 };
 
-export const getCompletedThisWeek = (department?: string) => {
+export const getCompletedThisWeek = async (department?: string) => {
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
-  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  const docs = await getAllDocuments();
+  const filtered = department ? docs.filter(doc => doc.department === department) : docs;
   
-  return docs.filter(
+  return filtered.filter(
     doc =>
       doc.completedDate &&
       doc.status === 'completed' &&
@@ -144,12 +233,13 @@ export const getCompletedThisWeek = (department?: string) => {
   ).length;
 };
 
-export const getCompletedThisMonth = (department?: string) => {
+export const getCompletedThisMonth = async (department?: string) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  const docs = await getAllDocuments();
+  const filtered = department ? docs.filter(doc => doc.department === department) : docs;
   
-  return docs.filter(
+  return filtered.filter(
     doc =>
       doc.completedDate &&
       doc.status === 'completed' &&
@@ -157,12 +247,13 @@ export const getCompletedThisMonth = (department?: string) => {
   ).length;
 };
 
-export const getCompletedThisYear = (department?: string) => {
+export const getCompletedThisYear = async (department?: string) => {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
+  const docs = await getAllDocuments();
+  const filtered = department ? docs.filter(doc => doc.department === department) : docs;
   
-  return docs.filter(
+  return filtered.filter(
     doc =>
       doc.completedDate &&
       doc.status === 'completed' &&
@@ -170,9 +261,10 @@ export const getCompletedThisYear = (department?: string) => {
   ).length;
 };
 
-export const getAverageProcessingTime = (department?: string) => {
-  const docs = getAllDocuments().filter(doc => !department || doc.department === department);
-  const completed = docs.filter(doc => doc.status === 'completed');
+export const getAverageProcessingTime = async (department?: string) => {
+  const docs = await getAllDocuments();
+  const filtered = department ? docs.filter(doc => doc.department === department) : docs;
+  const completed = filtered.filter(doc => doc.status === 'completed');
   if (completed.length === 0) return 0;
   
   const totalTime = completed.reduce((sum, doc) => {

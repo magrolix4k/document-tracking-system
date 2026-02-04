@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Document, Department } from '@/src/domain/entities';
 import { getDocumentById, getAllDocuments } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
+import { DEPARTMENT_LABELS } from '@/src/shared/constants';
 
 function TrackPageContent() {
   const searchParams = useSearchParams();
@@ -22,6 +23,7 @@ function TrackPageContent() {
     dateFrom: '',
     dateTo: '',
   });
+  const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -67,8 +69,8 @@ function TrackPageContent() {
     setRecentDocuments(recentList);
   };
 
-  const loadPendingDocuments = () => {
-    const allDocs = getAllDocuments();
+  const loadPendingDocuments = async () => {
+    const allDocs = await getAllDocuments();
     
     // Get all pending/processing documents
     const pending = allDocs.filter(doc => {
@@ -81,17 +83,18 @@ function TrackPageContent() {
     setPendingDocuments(pending);
   };
 
-  const handleSearch = (id?: string) => {
+  const handleSearch = async (id?: string) => {
     const searchId = id || documentId;
     if (!searchId.trim()) {
       toast.warning('กรุณากรอกเลขที่เอกสาร');
       return;
     }
 
-    const doc = getDocumentById(searchId.trim());
+    const doc = await getDocumentById(searchId.trim());
     if (doc) {
       setDocument(doc);
       setNotFound(false);
+      setSearchMode('quick');
       toast.success(`พบเอกสาร ${searchId.trim()}`);
       saveToRecent(searchId.trim());
     } else {
@@ -157,8 +160,8 @@ function TrackPageContent() {
     }
   };
 
-  const handleAdvancedSearch = () => {
-    const allDocs = getAllDocuments();
+  const handleAdvancedSearch = async () => {
+    const allDocs = await getAllDocuments();
     const filtered = allDocs.filter(doc => {
       const nameMatch = !advancedFilters.senderName || doc.senderName.toLowerCase().includes(advancedFilters.senderName.toLowerCase());
       const deptMatch = advancedFilters.department === 'all' || doc.department === advancedFilters.department;
@@ -167,6 +170,12 @@ function TrackPageContent() {
       return nameMatch && deptMatch && dateFromMatch && dateToMatch;
     });
     setSearchResults(filtered);
+    setSearchMode('advanced');
+    if (filtered.length > 0) {
+      toast.success(`พบ ${filtered.length} เอกสาร`);
+    } else {
+      toast.warning('ไม่พบเอกสารที่ตรงกัน');
+    }
   };
 
   return (
@@ -184,53 +193,68 @@ function TrackPageContent() {
           </div>
 
           {/* Recent Documents */}
-          {recentDocuments.length > 0 && (
-            <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-3 text-sm flex items-center gap-2">
-                <span>🔔</span> เอกสารล่าสุดที่ค้นหา
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {recentDocuments.map((docId) => (
-                  <button
-                    key={docId}
-                    onClick={() => {
-                      setDocumentId(docId);
-                      handleSearch(docId);
-                    }}
-                    className="bg-white dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-blue-700 dark:text-blue-400 transition-colors"
-                  >
-                    {docId}
-                  </button>
-                ))}
+          {/* Recent & Pending Documents - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {/* Recent Documents */}
+            {recentDocuments.length > 0 && (
+              <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-900/30 dark:to-blue-800/10 backdrop-blur-sm border border-blue-300/40 dark:border-blue-700/40 rounded-xl p-4 hover:border-blue-300/60 dark:hover:border-blue-600/60 transition-colors">
+                <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-3 text-sm flex items-center gap-2">
+                  <span>🔔</span> ล่าสุด
+                </h3>
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                  {recentDocuments.map((docId) => (
+                    <button
+                      key={docId}
+                      onClick={() => {
+                        setDocumentId(docId);
+                        handleSearch(docId);
+                      }}
+                      className={`px-2 py-1 rounded-md text-xs font-mono font-semibold transition-all flex-shrink-0 ${
+                        document?.id === docId
+                          ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-md ring-1 ring-blue-400'
+                          : 'bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 border border-blue-300/60 dark:border-blue-600/40 text-blue-700 dark:text-blue-300'
+                      }`}
+                    >
+                      {document?.id === docId && '✓ '}
+                      {docId.substring(0, 12)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Pending/Overdue Documents */}
-          {pendingDocuments.length > 0 && (
-            <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <h3 className="font-bold text-amber-900 dark:text-amber-300 mb-3 text-sm flex items-center gap-2">
-                <span>⚠️</span> เอกสารที่ส่งไปนานแล้วแต่ยังไม่ได้รับคืน ({pendingDocuments.length} รายการ)
-              </h3>
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-                {pendingDocuments.map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => {
-                      setDocumentId(doc.id);
-                      handleSearch(doc.id);
-                    }}
-                    className="bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-slate-700 border border-amber-300 dark:border-amber-700 px-2 py-1.5 rounded text-left transition-colors"
-                  >
-                    <p className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 truncate">{doc.id}</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {getDaysAgoText(doc.submittedDate)}
-                    </p>
-                  </button>
-                ))}
+            {/* Pending/Overdue Documents */}
+            {pendingDocuments.length > 0 && (
+              <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-900/30 dark:to-amber-800/10 backdrop-blur-sm border border-amber-300/40 dark:border-amber-700/40 rounded-xl p-4 hover:border-amber-300/60 dark:hover:border-amber-600/60 transition-colors">
+                <h3 className="font-bold text-amber-900 dark:text-amber-300 mb-3 text-sm flex items-center gap-2">
+                  <span>⚠️</span> ค้างอยู่
+                </h3>
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                  {pendingDocuments.slice(0, 10).map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => {
+                        setDocumentId(doc.id);
+                        handleSearch(doc.id);
+                      }}
+                      className={`px-2 py-1 rounded-md text-xs font-mono font-semibold transition-all flex-shrink-0 ${
+                        document?.id === doc.id
+                          ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md ring-1 ring-amber-400'
+                          : 'bg-white dark:bg-slate-700 hover:bg-amber-50 dark:hover:bg-slate-600 border border-amber-300/60 dark:border-amber-600/40 text-amber-700 dark:text-amber-300'
+                      }`}
+                      title={getDaysAgoText(doc.submittedDate)}
+                    >
+                      {document?.id === doc.id && '✓ '}
+                      {doc.id.substring(0, 12)}
+                    </button>
+                  ))}
+                  {pendingDocuments.length > 10 && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center">+{pendingDocuments.length - 10}</span>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Search Form */}
           <div className="mb-6 max-w-lg mx-auto">
@@ -258,8 +282,8 @@ function TrackPageContent() {
             </button>
             
             {showAdvancedSearch && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-slate-900 rounded-lg space-y-2">
-                <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-2 text-sm">ค้นหาขั้นสูง</h3>
+              <div className="mt-3 p-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-lg space-y-2">
+                <h3 className="font-bold text-purple-900 dark:text-purple-300 mb-2 text-sm">⚙️ ค้นหาขั้นสูง</h3>
                 <input
                   type="text"
                   placeholder="ชื่อผู้ส่ง"
@@ -273,17 +297,9 @@ function TrackPageContent() {
                   className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
                 >
                   <option value="all">ทุกแผนก</option>
-                  <option value="NIGHT MED">NIGHT MED</option>
-                  <option value="MED">MED</option>
-                  <option value="PED">PED</option>
-                  <option value="NIGHT PED">NIGHT PED</option>
-                  <option value="OBG">OBG</option>
-                  <option value="ENT">ENT</option>
-                  <option value="EYE">EYE</option>
-                  <option value="SKIN">SKIN</option>
-                  <option value="CHK">CHK</option>
-                  <option value="ER">ER</option>
-                  <option value="SUR">SUR</option>
+                  {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
                 </select>
                 <div className="grid grid-cols-2 gap-2">
                   <input

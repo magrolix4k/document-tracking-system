@@ -33,14 +33,17 @@ export default function DashboardPage() {
   const [dailyStats, setDailyStats] = useState<{date: string, count: number}[]>([]);
 
   useEffect(() => {
-    loadStats();
-    loadAllDocuments();
-    loadPeriodStats();
-    loadDailyStats();
+    const initializeData = async () => {
+      await loadStats();
+      await loadAllDocuments();
+      await loadPeriodStats();
+      await loadDailyStats();
+    };
+    initializeData();
   }, []);
 
-  const loadDailyStats = () => {
-    const docs = getAllDocuments();
+  const loadDailyStats = async () => {
+    const docs = await getAllDocuments();
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
@@ -52,28 +55,30 @@ export default function DashboardPage() {
     setDailyStats(last7Days);
   };
 
-  const loadPeriodStats = () => {
-    setWeeklyCompleted(getCompletedThisWeek());
-    setMonthlyCompleted(getCompletedThisMonth());
-    setYearlyCompleted(getCompletedThisYear());
+  const loadPeriodStats = async () => {
+    setWeeklyCompleted(await getCompletedThisWeek());
+    setMonthlyCompleted(await getCompletedThisMonth());
+    setYearlyCompleted(await getCompletedThisYear());
   };
 
-  const loadAllDocuments = () => {
-    setAllDocuments(getAllDocuments());
+  const loadAllDocuments = async () => {
+    setAllDocuments(await getAllDocuments());
   };
 
-  const loadStats = () => {
-    const departmentStats: DepartmentStats[] = departments.map((dept) => {
-      const allDocs = getDocumentsByDepartment(dept);
-      const processing = allDocs.filter((d) => d.status === 'processing').length;
-      const completedToday = getCompletedToday(dept);
+  const loadStats = async () => {
+    const departmentStats: DepartmentStats[] = await Promise.all(
+      departments.map(async (dept) => {
+        const allDocs = await getDocumentsByDepartment(dept);
+        const processing = allDocs.filter((d) => d.status === 'processing').length;
+        const completedToday = await getCompletedToday(dept);
 
-      return {
-        department: dept,
-        processing,
-        completedToday,
-      };
-    });
+        return {
+          department: dept,
+          processing,
+          completedToday,
+        };
+      })
+    );
 
     setStats(departmentStats);
   };

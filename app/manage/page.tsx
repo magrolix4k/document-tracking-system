@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { Department, Document, DocumentStatus } from '@/src/domain/entities';
 import { updateDocument, getDocumentsByStatus } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
-
-const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR', 'GI'];
+import { DEPARTMENTS, DEPARTMENT_LABELS } from '@/src/shared/constants';
 
 export default function ManagePage() {
   const toast = useToast();
@@ -27,38 +26,45 @@ export default function ManagePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDept, activeTab]);
 
-  const updateStatusCounts = () => {
+  const updateStatusCounts = async () => {
     const counts: Record<DocumentStatus, number> = {
       pending: 0,
       processing: 0,
       completed: 0,
     };
 
-    (['pending', 'processing', 'completed'] as DocumentStatus[]).forEach(status => {
+    for (const status of ['pending', 'processing', 'completed'] as DocumentStatus[]) {
       if (selectedDept === 'ทั้งหมด') {
-        counts[status] = departments.reduce((sum, dept) => sum + getDocumentsByStatus(dept, status).length, 0);
+        let total = 0;
+        for (const dept of DEPARTMENTS) {
+          const docs = await getDocumentsByStatus(dept, status);
+          total += docs.length;
+        }
+        counts[status] = total;
       } else {
-        counts[status] = getDocumentsByStatus(selectedDept, status).length;
+        const docs = await getDocumentsByStatus(selectedDept, status);
+        counts[status] = docs.length;
       }
-    });
+    }
 
     setStatusCounts(counts);
   };
 
-  const loadDocuments = () => {
+  const loadDocuments = async () => {
     if (selectedDept === 'ทั้งหมด') {
       // ดึงเอกสารจากทุกแผนก
-      const allDocs = departments.flatMap(dept => getDocumentsByStatus(dept, activeTab));
+      const allDocsArrays = await Promise.all(DEPARTMENTS.map(dept => getDocumentsByStatus(dept, activeTab)));
+      const allDocs = allDocsArrays.flat();
       setDocuments(allDocs);
     } else {
-      const docs = getDocumentsByStatus(selectedDept, activeTab);
+      const docs = await getDocumentsByStatus(selectedDept, activeTab);
       setDocuments(docs);
     }
   };
 
-  const handleCompleteDocument = (docId: string) => {
+  const handleCompleteDocument = async (docId: string) => {
     if (confirm('ยืนยันการรับคืนเอกสารนี้?')) {
-      updateDocument(
+      await updateDocument(
         docId,
         {
           status: 'completed',
@@ -66,18 +72,18 @@ export default function ManagePage() {
         }
       );
       toast.success(`รับคืนเอกสาร ${docId} สำเร็จ`);
-      loadDocuments();
-      updateStatusCounts();
+      await loadDocuments();
+      await updateStatusCounts();
     }
   };
 
-  const handleSaveEdit = (docId: string) => {
+  const handleSaveEdit = async (docId: string) => {
     if (!editingSenderName.trim()) {
       toast.error('กรุณาระบุชื่อผู้ส่ง');
       return;
     }
 
-    updateDocument(
+    await updateDocument(
       docId,
       {
         senderName: editingSenderName.trim(),
@@ -86,7 +92,7 @@ export default function ManagePage() {
     );
     toast.success('แก้ไขเอกสารสำเร็จ');
     setEditingDoc(null);
-    loadDocuments();
+    await loadDocuments();
   };
 
   const formatDate = (dateString: string) => {
@@ -141,7 +147,7 @@ export default function ManagePage() {
               >
                 ทั้งหมด
               </button>
-              {departments.map((dept) => (
+              {DEPARTMENTS.map((dept) => (
                 <button
                   key={dept}
                   onClick={() => setSelectedDept(dept)}
@@ -150,6 +156,7 @@ export default function ManagePage() {
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 hover:bg-gray-300 dark:hover:bg-slate-600'
                   }`}
+                  title={DEPARTMENT_LABELS[dept]}
                 >
                   {dept}
                 </button>

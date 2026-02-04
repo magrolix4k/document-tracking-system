@@ -4,9 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Department } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
-import { getCurrentWeekLabel, getWeekDateRange, formatDateThai } from '@/src/shared/utils/weekDateRange';
-
-const departments: Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR', 'GI'];
+import { getWeekDateRange } from '@/src/shared/utils/weekDateRange';
+import { DEPARTMENTS, DEPARTMENT_LABELS } from '@/src/shared/constants';
 
 const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -115,7 +114,7 @@ export default function SubmitPage() {
     return days;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!senderName.trim()) {
@@ -123,7 +122,7 @@ export default function SubmitPage() {
       return;
     }
 
-    const docId = generateDocumentId();
+    const docId = await generateDocumentId();
     const newDocument = {
       id: docId,
       senderName: senderName.trim(),
@@ -142,7 +141,7 @@ export default function SubmitPage() {
       ],
     };
 
-    saveDocument(newDocument);
+    await saveDocument(newDocument);
     setSubmittedDoc(docId);
     setShowSuccess(true);
     toast.success(`ส่งเอกสารสำเร็จ! หมายเลข: ${docId}`);
@@ -173,9 +172,26 @@ export default function SubmitPage() {
                   {submittedDoc}
                 </p>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(submittedDoc!);
-                    toast.success('คัดลอกเลขที่เอกสารแล้ว');
+                  onClick={async () => {
+                    try {
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(submittedDoc!);
+                      } else {
+                        // Fallback for non-HTTPS or older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = submittedDoc!;
+                        textArea.style.position = 'fixed';
+                        textArea.style.opacity = '0';
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                      }
+                      toast.success('คัดลอกเลขที่เอกสารแล้ว');
+                    } catch (error) {
+                      console.error('Copy failed:', error);
+                      toast.error('ไม่สามารถคัดลอกได้');
+                    }
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
                   title="คัดลอกเลขที่เอกสาร"
@@ -247,9 +263,9 @@ export default function SubmitPage() {
                 onChange={(e) => setDepartment(e.target.value as Department)}
                 className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
               >
-                {departments.map((dept) => (
+                {DEPARTMENTS.map((dept) => (
                   <option key={dept} value={dept} className="bg-white dark:bg-slate-700">
-                    {dept}
+                    {DEPARTMENT_LABELS[dept]}
                   </option>
                 ))}
               </select>

@@ -3,7 +3,7 @@ import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentStatus 
 import { ValidationError } from '../errors/DocumentErrors';
 
 // Valid constants
-const VALID_DEPARTMENTS: readonly Department[] = ['NIGHT MED', 'MED', 'PED', 'NIGHT PED', 'OBG', 'ENT', 'EYE', 'SKIN', 'CHK', 'ER', 'SUR', 'GI'] as const;
+const VALID_DEPARTMENTS: readonly Department[] = ['GI', 'CHK', 'PHY', 'ENT', 'EYE', 'DENT', 'SKIN', 'OBG', 'NIGHT OBG', 'NIGHT MED', 'MED', 'PED', 'NIGHT PED'] as const;
 const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
 
 // Validation helpers

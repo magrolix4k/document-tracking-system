@@ -16,13 +16,13 @@ export default function ChartsPage() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const docs = getAllDocuments();
+  const loadData = async () => {
+    const docs = await getAllDocuments();
     setAllDocs(docs);
 
     // Department statistics
-    const stats = departments.map(dept => {
-      const deptDocs = getDocumentsByDepartment(dept);
+    const statsPromises = departments.map(async dept => {
+      const deptDocs = await getDocumentsByDepartment(dept);
       return {
         dept,
         count: deptDocs.length,
@@ -31,6 +31,7 @@ export default function ChartsPage() {
         completed: deptDocs.filter(d => d.status === 'completed').length,
       };
     });
+    const stats = await Promise.all(statsPromises);
     setDeptStats(stats);
 
     // Daily statistics (last 7 days)

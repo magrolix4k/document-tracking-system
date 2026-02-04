@@ -1,1 +1,1 @@
-export { DEPARTMENTS, DOCUMENT_TYPES, PRIORITIES } from './departments';
+export { DEPARTMENTS, DEPARTMENT_LABELS } from './departments';
