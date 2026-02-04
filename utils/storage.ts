@@ -4,24 +4,6 @@
 import { firebaseDocumentService } from '@/src/infrastructure/firebase';
 import { Document } from '@/src/domain/entities';
 
-// Cache for in-memory storage (for better performance during session)
-let documentCache: Document[] | null = null;
-let cacheInitialized = false;
-
-// Initialize cache on first load
-async function initializeCache() {
-  if (!cacheInitialized && typeof window !== 'undefined') {
-    try {
-      documentCache = await firebaseDocumentService.getAllDocuments();
-      cacheInitialized = true;
-    } catch (error) {
-      console.error('Error initializing cache:', error);
-      documentCache = [];
-      cacheInitialized = true;
-    }
-  }
-}
-
 // Export old API for backward compatibility with existing pages
 export const getDocumentById = async (id: string) => {
   try {
@@ -34,10 +16,7 @@ export const getDocumentById = async (id: string) => {
 
 export const getAllDocuments = async (): Promise<Document[]> => {
   try {
-    if (!cacheInitialized) {
-      await initializeCache();
-    }
-    return documentCache || [];
+    return await firebaseDocumentService.getAllDocuments();
   } catch (error) {
     console.error('Error getting all documents:', error);
     return [];
@@ -92,14 +71,6 @@ export const updateDocument = async (id: string, updated: any, staffName?: strin
     }
 
     await firebaseDocumentService.updateDocument(id, updatedDoc);
-    
-    // Update cache
-    if (documentCache) {
-      const index = documentCache.findIndex(d => d.id === id);
-      if (index >= 0) {
-        documentCache[index] = updatedDoc;
-      }
-    }
   } catch (error) {
     console.error('Error updating document:', error);
     throw error;
@@ -132,14 +103,6 @@ export const addHistory = async (id: string, action: string, staffName?: string,
 
     const updatedHistory = [...(doc.history || []), historyEntry];
     await firebaseDocumentService.updateDocument(id, { history: updatedHistory });
-
-    // Update cache
-    if (documentCache) {
-      const index = documentCache.findIndex(d => d.id === id);
-      if (index >= 0) {
-        documentCache[index].history = updatedHistory;
-      }
-    }
   } catch (error) {
     console.error('Error adding history:', error);
     throw error;
@@ -149,11 +112,6 @@ export const addHistory = async (id: string, action: string, staffName?: string,
 export const deleteDocument = async (id: string) => {
   try {
     await firebaseDocumentService.deleteDocument(id);
-    
-    // Update cache
-    if (documentCache) {
-      documentCache = documentCache.filter(doc => doc.id !== id);
-    }
   } catch (error) {
     console.error('Error deleting document:', error);
     throw error;
@@ -173,16 +131,6 @@ export const generateDocumentId = async () => {
 export const saveDocument = async (doc: Document) => {
   try {
     await firebaseDocumentService.saveDocument(doc);
-    
-    // Update cache
-    if (documentCache) {
-      const existingIndex = documentCache.findIndex(d => d.id === doc.id);
-      if (existingIndex >= 0) {
-        documentCache[existingIndex] = doc;
-      } else {
-        documentCache.push(doc);
-      }
-    }
   } catch (error) {
     console.error('Error saving document:', error);
     throw error;

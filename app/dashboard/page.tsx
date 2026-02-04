@@ -10,15 +10,9 @@ interface DepartmentStats {
   completedToday: number;
 }
 import { 
-  getAllDocuments, 
-  getDocumentsByDepartment, 
-  getCompletedToday,
-  getCompletedThisWeek,
-  getCompletedThisMonth,
-  getCompletedThisYear
+  getAllDocuments
 } from '@/utils/storage';
 import { DEPARTMENTS } from '@/src/shared/constants';
-import * as XLSX from 'xlsx';
 
 const departments: Department[] = DEPARTMENTS;
 
@@ -33,54 +27,60 @@ export default function DashboardPage() {
   const [dailyStats, setDailyStats] = useState<{date: string, count: number}[]>([]);
 
   useEffect(() => {
-    const initializeData = async () => {
-      await loadStats();
-      await loadAllDocuments();
-      await loadPeriodStats();
-      await loadDailyStats();
-    };
-    initializeData();
+    loadAllData();
   }, []);
 
-  const loadDailyStats = async () => {
-    const docs = await getAllDocuments();
+  const loadAllData = async () => {
+    // ดึงข้อมูลทั้งหมดครั้งเดียว
+    const allDocs = await getAllDocuments();
+    setAllDocuments(allDocs);
+
+    // คำนวณทุกอย่างจาก allDocs ที่ได้มา
+    
+    // Department statistics
+    const departmentStats: DepartmentStats[] = departments.map((dept) => {
+      const deptDocs = allDocs.filter(d => d.department === dept);
+      const processing = deptDocs.filter((d) => d.status === 'processing').length;
+      const today = new Date().toDateString();
+      const completedToday = deptDocs.filter(
+        d => d.status === 'completed' && new Date(d.completedDate || '').toDateString() === today
+      ).length;
+
+      return {
+        department: dept,
+        processing,
+        completedToday,
+      };
+    });
+    setStats(departmentStats);
+
+    // Period stats
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    setWeeklyCompleted(allDocs.filter(
+      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfWeek
+    ).length);
+    setMonthlyCompleted(allDocs.filter(
+      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfMonth
+    ).length);
+    setYearlyCompleted(allDocs.filter(
+      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfYear
+    ).length);
+
+    // Daily stats
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const count = docs.filter(d => d.submittedDate.startsWith(dateStr)).length;
+      const count = allDocs.filter(d => d.submittedDate.startsWith(dateStr)).length;
       last7Days.push({ date: dateStr, count });
     }
     setDailyStats(last7Days);
-  };
-
-  const loadPeriodStats = async () => {
-    setWeeklyCompleted(await getCompletedThisWeek());
-    setMonthlyCompleted(await getCompletedThisMonth());
-    setYearlyCompleted(await getCompletedThisYear());
-  };
-
-  const loadAllDocuments = async () => {
-    setAllDocuments(await getAllDocuments());
-  };
-
-  const loadStats = async () => {
-    const departmentStats: DepartmentStats[] = await Promise.all(
-      departments.map(async (dept) => {
-        const allDocs = await getDocumentsByDepartment(dept);
-        const processing = allDocs.filter((d) => d.status === 'processing').length;
-        const completedToday = await getCompletedToday(dept);
-
-        return {
-          department: dept,
-          processing,
-          completedToday,
-        };
-      })
-    );
-
-    setStats(departmentStats);
   };
 
   const totalProcessing = stats.reduce((sum, s) => sum + s.processing, 0);
@@ -133,7 +133,8 @@ export default function DashboardPage() {
     });
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    const XLSX = await import('xlsx');
     const excelData = filteredDocuments.map((doc) => ({
       'เลขที่เอกสาร': doc.id,
       'ชื่อผู้ส่ง': doc.senderName,
@@ -160,7 +161,8 @@ export default function DashboardPage() {
     XLSX.writeFile(wb, fileName);
   };
 
-  const exportStatsToExcel = () => {
+  const exportStatsToExcel = async () => {
+    const XLSX = await import('xlsx');
     const statsData: Array<Record<string, string | number>> = stats.map((stat) => ({
       'แผนก': stat.department,
       'ส่งเอกสาร': stat.processing,
@@ -568,12 +570,7 @@ export default function DashboardPage() {
         {/* Refresh Button */}
         <div className="mt-6 text-center">
           <button
-            onClick={() => {
-              loadStats();
-              loadAllDocuments();
-              loadPeriodStats();
-              loadDailyStats();
-            }}
+            onClick={loadAllData}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors text-sm shadow-md"
           >
             🔄 รีเฟรชข้อมูล

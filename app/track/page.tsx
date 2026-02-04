@@ -31,55 +31,25 @@ function TrackPageContent() {
       setDocumentId(id);
       handleSearch(id);
     }
-    // Load recent documents from localStorage
-    loadRecentDocuments();
-    // Load pending/overdue documents
-    loadPendingDocuments();
+    loadAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const loadRecentDocuments = () => {
-    const recent = localStorage.getItem('recentDocuments');
-    if (recent) {
-      try {
-        const parsed = JSON.parse(recent);
-        setRecentDocuments(parsed.slice(0, 10)); // Keep only last 10
-      } catch (e) {
-        console.error('Failed to parse recent documents', e);
-      }
-    }
-  };
-
-  const saveToRecent = (docId: string) => {
-    const recent = localStorage.getItem('recentDocuments');
-    let recentList: string[] = [];
-    if (recent) {
-      try {
-        recentList = JSON.parse(recent);
-      } catch (e) {
-        console.error('Failed to parse recent documents', e);
-      }
-    }
-    // Remove if already exists and add to front
-    recentList = recentList.filter(id => id !== docId);
-    recentList.unshift(docId);
-    // Keep only last 10
-    recentList = recentList.slice(0, 10);
-    localStorage.setItem('recentDocuments', JSON.stringify(recentList));
-    setRecentDocuments(recentList);
-  };
-
-  const loadPendingDocuments = async () => {
+  const loadAllData = async () => {
     const allDocs = await getAllDocuments();
     
-    // Get all pending/processing documents
+    // Recent documents - 10 most recently submitted
+    const sorted = allDocs
+      .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime())
+      .slice(0, 10)
+      .map(doc => doc.id);
+    setRecentDocuments(sorted);
+    
+    // Pending documents
     const pending = allDocs.filter(doc => {
       return doc.status === 'pending' || doc.status === 'processing';
     });
-    
-    // Sort by oldest first (submitted date ascending)
     pending.sort((a, b) => new Date(a.submittedDate).getTime() - new Date(b.submittedDate).getTime());
-    
     setPendingDocuments(pending);
   };
 
@@ -96,7 +66,7 @@ function TrackPageContent() {
       setNotFound(false);
       setSearchMode('quick');
       toast.success(`พบเอกสาร ${searchId.trim()}`);
-      saveToRecent(searchId.trim());
+      await loadAllData();
     } else {
       setDocument(null);
       setNotFound(true);

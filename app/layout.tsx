@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/src/presentation/components/Navbar";
 import { ToastProvider } from "@/src/presentation/contexts/ToastContext";
+import { sarabun } from "./fonts";
 
 export const metadata: Metadata = {
   title: "ระบบติดตามเอกสาร - Document Tracking System",
@@ -14,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
+    <html lang="th" className={sarabun.className}>
       <body>
         <ToastProvider>
           <Navbar />

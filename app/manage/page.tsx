@@ -21,12 +21,25 @@ export default function ManagePage() {
   });
 
   useEffect(() => {
-    loadDocuments();
-    updateStatusCounts();
+    loadAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDept, activeTab]);
 
-  const updateStatusCounts = async () => {
+  const loadAllData = async () => {
+    // ดึงข้อมูลครั้งเดียว filter ในฝั่ง client
+    const allDocsArrays = await Promise.all(
+      DEPARTMENTS.map(dept => getDocumentsByStatus(dept, activeTab))
+    );
+    const allDocs = allDocsArrays.flat();
+
+    // Filter ตาม department
+    const filteredDocs = selectedDept === 'ทั้งหมด' 
+      ? allDocs 
+      : allDocs.filter(doc => doc.department === selectedDept);
+    
+    setDocuments(filteredDocs);
+
+    // คำนวณ status counts จากข้อมูลที่มี
     const counts: Record<DocumentStatus, number> = {
       pending: 0,
       processing: 0,
@@ -34,32 +47,16 @@ export default function ManagePage() {
     };
 
     for (const status of ['pending', 'processing', 'completed'] as DocumentStatus[]) {
-      if (selectedDept === 'ทั้งหมด') {
-        let total = 0;
-        for (const dept of DEPARTMENTS) {
-          const docs = await getDocumentsByStatus(dept, status);
-          total += docs.length;
-        }
-        counts[status] = total;
-      } else {
-        const docs = await getDocumentsByStatus(selectedDept, status);
-        counts[status] = docs.length;
-      }
+      const statusDocsArrays = await Promise.all(
+        DEPARTMENTS.map(dept => getDocumentsByStatus(dept, status))
+      );
+      const statusDocs = statusDocsArrays.flat();
+      counts[status] = selectedDept === 'ทั้งหมด' 
+        ? statusDocs.length 
+        : statusDocs.filter(doc => doc.department === selectedDept).length;
     }
 
     setStatusCounts(counts);
-  };
-
-  const loadDocuments = async () => {
-    if (selectedDept === 'ทั้งหมด') {
-      // ดึงเอกสารจากทุกแผนก
-      const allDocsArrays = await Promise.all(DEPARTMENTS.map(dept => getDocumentsByStatus(dept, activeTab)));
-      const allDocs = allDocsArrays.flat();
-      setDocuments(allDocs);
-    } else {
-      const docs = await getDocumentsByStatus(selectedDept, activeTab);
-      setDocuments(docs);
-    }
   };
 
   const handleCompleteDocument = async (docId: string) => {
@@ -72,8 +69,7 @@ export default function ManagePage() {
         }
       );
       toast.success(`รับคืนเอกสาร ${docId} สำเร็จ`);
-      await loadDocuments();
-      await updateStatusCounts();
+      await loadAllData();
     }
   };
 
@@ -92,7 +88,7 @@ export default function ManagePage() {
     );
     toast.success('แก้ไขเอกสารสำเร็จ');
     setEditingDoc(null);
-    await loadDocuments();
+    await loadAllData();
   };
 
   const formatDate = (dateString: string) => {

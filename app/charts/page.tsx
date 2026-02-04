@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Department, Document } from '@/src/domain/entities';
-import { getAllDocuments, getDocumentsByDepartment } from '@/utils/storage';
+import { getAllDocuments } from '@/utils/storage';
 import { DEPARTMENTS } from '@/src/shared/constants';
 
 const departments: Department[] = DEPARTMENTS;
@@ -17,12 +17,13 @@ export default function ChartsPage() {
   }, []);
 
   const loadData = async () => {
+    // ดึงข้อมูลครั้งเดียว แล้วคำนวณทุกอย่างจากข้อมูลเดียวกัน
     const docs = await getAllDocuments();
     setAllDocs(docs);
 
-    // Department statistics
-    const statsPromises = departments.map(async dept => {
-      const deptDocs = await getDocumentsByDepartment(dept);
+    // Department statistics - คำนวณจาก docs ที่ได้มา
+    const stats = departments.map(dept => {
+      const deptDocs = docs.filter(d => d.department === dept);
       return {
         dept,
         count: deptDocs.length,
@@ -31,7 +32,6 @@ export default function ChartsPage() {
         completed: deptDocs.filter(d => d.status === 'completed').length,
       };
     });
-    const stats = await Promise.all(statsPromises);
     setDeptStats(stats);
 
     // Daily statistics (last 7 days)
