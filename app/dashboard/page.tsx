@@ -139,6 +139,7 @@ export default function DashboardPage() {
       'เลขที่เอกสาร': doc.id,
       'ชื่อผู้ส่ง': doc.senderName,
       'แผนก': doc.department,
+      'ประเภทเอกสาร': doc.documentType,
       'สัปดาห์': doc.weekRange,
       'สถานะ': getStatusText(doc.status),
       'วันที่ส่ง': formatDate(doc.submittedDate),
@@ -150,7 +151,7 @@ export default function DashboardPage() {
 
     const ws = XLSX.utils.json_to_sheet(excelData);
     ws['!cols'] = [
-      { wch: 18 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 15 },
+      { wch: 18 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 15 },
       { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 30 },
     ];
 
@@ -496,8 +497,8 @@ export default function DashboardPage() {
                       <td className="py-2 px-2 text-xs text-gray-700 dark:text-slate-300">
                         {doc.department}
                       </td>
-                      <td className="py-2 px-2 text-xs text-gray-700 dark:text-slate-300">
-                        {doc.weekRange}
+                      <td className="py-2 px-2 text-xs text-gray-700 dark:text-slate-300 font-medium">
+                        {doc.documentType}
                       </td>
                       <td className="py-2 px-2 text-center">
                         <span
@@ -550,10 +551,12 @@ export default function DashboardPage() {
                       <span className="font-medium">ผู้ส่ง:</span> {doc.senderName}
                     </p>
                     <p className="text-gray-700 dark:text-slate-300">
-                      <span className="font-medium">แผนก:</span> {doc.department} | {doc.weekRange}
+                      <span className="font-medium">แผนก:</span> {doc.department} | <span className="font-medium">ประเภท:</span> {doc.documentType}
                     </p>
-                    <p className="text-gray-600 dark:text-slate-400">
-                      {new Date(doc.submittedDate).toLocaleDateString('th-TH', {
+                    <p className="text-gray-700 dark:text-slate-300">
+                      <span className="font-medium">ช่วงวันที่:</span> {doc.weekRange}
+                    </p>
+                    <p className="text-gray-600 dark:text-slate-400">{new Date(doc.submittedDate).toLocaleDateString('th-TH', {
                         day: '2-digit',
                         month: 'short',
                         hour: '2-digit',

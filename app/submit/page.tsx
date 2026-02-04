@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Department } from '@/src/domain/entities';
+import { Department, DocumentType } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 import { getWeekDateRange } from '@/src/shared/utils/weekDateRange';
@@ -16,6 +16,7 @@ export default function SubmitPage() {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [senderName, setSenderName] = useState('');
   const [department, setDepartment] = useState<Department>('NIGHT MED');
+  const [documentType, setDocumentType] = useState<DocumentType>('WI');
   const [details, setDetails] = useState('');
   const [submittedDoc, setSubmittedDoc] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -127,6 +128,7 @@ export default function SubmitPage() {
       id: docId,
       senderName: senderName.trim(),
       department,
+      documentType,
       weekRange: weekLabel,
       details: details.trim(),
       status: 'processing' as const,
@@ -268,6 +270,22 @@ export default function SubmitPage() {
                     {DEPARTMENT_LABELS[dept]}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Document Type */}
+            <div>
+              <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-1 text-sm">
+                ประเภทเอกสาร <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value as DocumentType)}
+                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
+              >
+                <option value="WI" className="bg-white dark:bg-slate-700">WI (Work Instruction)</option>
+                <option value="WP" className="bg-white dark:bg-slate-700">WP (Work Procedure)</option>
+                <option value="POLICY" className="bg-white dark:bg-slate-700">POLICY (นโยบาย)</option>
               </select>
             </div>
 

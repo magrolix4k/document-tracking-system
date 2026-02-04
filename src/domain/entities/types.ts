@@ -2,6 +2,7 @@
 export type {
   DocumentStatus,
   Department,
+  DocumentType,
   HistoryEntry,
   Document,
   CreateDocumentDto,

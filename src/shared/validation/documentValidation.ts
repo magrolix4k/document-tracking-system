@@ -1,10 +1,11 @@
 // Validation utilities for domain entities
-import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentStatus } from '@/src/domain/entities/Document';
+import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentStatus, DocumentType } from '@/src/domain/entities/Document';
 import { ValidationError } from '../errors/DocumentErrors';
 
 // Valid constants
 const VALID_DEPARTMENTS: readonly Department[] = ['GI', 'CHK', 'PHY', 'ENT', 'EYE', 'DENT', 'SKIN', 'OBG', 'NIGHT OBG', 'NIGHT MED', 'MED', 'PED', 'NIGHT PED'] as const;
 const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
+const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY'] as const;
 
 // Validation helpers
 export function isValidDepartment(value: unknown): value is Department {
@@ -13,6 +14,10 @@ export function isValidDepartment(value: unknown): value is Department {
 
 export function isValidStatus(value: unknown): value is DocumentStatus {
   return typeof value === 'string' && (VALID_STATUSES as readonly string[]).includes(value);
+}
+
+export function isValidDocumentType(value: unknown): value is DocumentType {
+  return typeof value === 'string' && (VALID_DOCUMENT_TYPES as readonly string[]).includes(value);
 }
 
 export function isNonEmptyString(value: unknown): value is string {
@@ -48,6 +53,15 @@ export function validateCreateDocumentDto(dto: unknown): asserts dto is CreateDo
       `แผนกไม่ถูกต้อง กรุณาเลือกจาก: ${VALID_DEPARTMENTS.join(', ')}`,
       'department',
       data.department
+    );
+  }
+
+  // Validate documentType
+  if (!isValidDocumentType(data.documentType)) {
+    throw new ValidationError(
+      `ประเภทเอกสารไม่ถูกต้อง กรุณาเลือกจาก: ${VALID_DOCUMENT_TYPES.join(', ')}`,
+      'documentType',
+      data.documentType
     );
   }
 
@@ -118,6 +132,7 @@ export function validateDocumentId(id: unknown): asserts id is string {
 export const VALIDATION_CONSTANTS = {
   DEPARTMENTS: VALID_DEPARTMENTS,
   STATUSES: VALID_STATUSES,
+  DOCUMENT_TYPES: VALID_DOCUMENT_TYPES,
   MAX_SENDER_NAME_LENGTH: 200,
   MAX_DETAILS_LENGTH: 1000,
   MAX_STAFF_NAME_LENGTH: 200,

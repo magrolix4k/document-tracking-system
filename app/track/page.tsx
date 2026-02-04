@@ -423,6 +423,12 @@ function TrackPageContent() {
                   <div>
                     <p className="text-gray-600 dark:text-slate-400 text-xs font-semibold">ประเภทเอกสาร</p>
                     <p className="font-semibold text-gray-900 dark:text-slate-100">
+                      {document.documentType}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 dark:text-slate-400 text-xs font-semibold">ช่วงวันที่</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">
                       {document.weekRange}
                     </p>
                   </div>

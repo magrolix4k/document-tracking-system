@@ -2,6 +2,7 @@
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
 export type Department = 'GI' | 'CHK' | 'PHY' | 'ENT' | 'EYE' | 'DENT' | 'SKIN' | 'OBG' | 'NIGHT OBG' | 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED';
+export type DocumentType = 'WI' | 'WP' | 'POLICY';
 
 export interface HistoryEntry {
   timestamp: string;
@@ -16,6 +17,7 @@ export interface Document {
   id: string;
   senderName: string;
   department: Department;
+  documentType: DocumentType;
   weekRange: string; // e.g., "13 - 19 Jan 2025"
   details: string;
   status: DocumentStatus;
@@ -30,6 +32,7 @@ export interface Document {
 export interface CreateDocumentDto {
   senderName: string;
   department: Department;
+  documentType: DocumentType;
   weekRange: string;
   details: string;
 }
