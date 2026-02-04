@@ -286,6 +286,7 @@ export default function SubmitPage() {
                 <option value="WI" className="bg-white dark:bg-slate-700">WI (Work Instruction)</option>
                 <option value="WP" className="bg-white dark:bg-slate-700">WP (Work Procedure)</option>
                 <option value="POLICY" className="bg-white dark:bg-slate-700">POLICY (นโยบาย)</option>
+                <option value="WAITING TIME" className="bg-white dark:bg-slate-700">WAITING TIME (เวลารอคอย)</option>
               </select>
             </div>
 

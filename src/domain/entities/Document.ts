@@ -2,7 +2,7 @@
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
 export type Department = 'GI' | 'CHK' | 'PHY' | 'ENT' | 'EYE' | 'DENT' | 'SKIN' | 'OBG' | 'NIGHT OBG' | 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED';
-export type DocumentType = 'WI' | 'WP' | 'POLICY';
+export type DocumentType = 'WI' | 'WP' | 'POLICY' | 'WAITING TIME';
 
 export interface HistoryEntry {
   timestamp: string;

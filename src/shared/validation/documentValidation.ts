@@ -5,7 +5,7 @@ import { ValidationError } from '../errors/DocumentErrors';
 // Valid constants
 const VALID_DEPARTMENTS: readonly Department[] = ['GI', 'CHK', 'PHY', 'ENT', 'EYE', 'DENT', 'SKIN', 'OBG', 'NIGHT OBG', 'NIGHT MED', 'MED', 'PED', 'NIGHT PED'] as const;
 const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
-const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY'] as const;
+const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY', 'WAITING TIME'] as const;
 
 // Validation helpers
 export function isValidDepartment(value: unknown): value is Department {
