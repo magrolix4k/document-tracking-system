@@ -3,7 +3,15 @@ import { CreateDocumentDto, UpdateDocumentStatusDto, Department, DocumentStatus,
 import { ValidationError } from '../errors/DocumentErrors';
 
 // Valid constants
-const VALID_DEPARTMENTS: readonly Department[] = ['GI', 'CHK', 'PHY', 'ENT', 'EYE', 'DENT', 'SKIN', 'OBG', 'NIGHT OBG', 'NIGHT MED', 'MED', 'PED', 'NIGHT PED'] as const;
+const VALID_DEPARTMENTS: readonly Department[] = [
+  'PUR', 'STO', 'ER', 'SURG', 'CRO', 'STR', 'HSA', 'ADMISSION',
+  'AMB', 'CAS', 'PHA', 'MED', 'MRD', 'PED', 'OBG', 'LAB',
+  'MAI', 'SKIN', 'CCO', 'HOU', 'CHK', 'EYE', 'ENT', 'CAR',
+  'XRD', 'DNT', 'HD', 'ICU', 'CATH', 'LR', 'OR', 'CSSD',
+  'MEM', 'NICU', 'NSY', 'HR', 'MRA', 'IPC', 'ACC', 'FIN',
+  'QC', 'COM', 'PHY', 'GI', 'W10', 'W11', 'W12',
+  'NIGHT OBG', 'NIGHT MED', 'NIGHT PED'
+] as const;
 const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
 const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY', 'WAITING TIME'] as const;
 

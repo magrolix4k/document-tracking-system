@@ -5,7 +5,7 @@ import { Department, DocumentType } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 import { getWeekDateRange } from '@/src/shared/utils/weekDateRange';
-import { DEPARTMENTS, DEPARTMENT_LABELS } from '@/src/shared/constants';
+import { SearchableSelect } from '@/src/presentation/components';
 
 const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -15,7 +15,7 @@ export default function SubmitPage() {
   const toast = useToast();
   const pickerRef = useRef<HTMLDivElement>(null);
   const [senderName, setSenderName] = useState('');
-  const [department, setDepartment] = useState<Department>('NIGHT MED');
+  const [department, setDepartment] = useState<Department>('PUR');
   const [documentType, setDocumentType] = useState<DocumentType>('WI');
   const [details, setDetails] = useState('');
   const [submittedDoc, setSubmittedDoc] = useState<string | null>(null);
@@ -83,20 +83,25 @@ export default function SubmitPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const handleDateClick = (day: number) => {
-    const dateStr = `${displayMonth.getFullYear()}-${String(displayMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const handleDateClick = (day: number, monthDate?: Date) => {
+    const targetMonth = monthDate || displayMonth;
+    const dateStr = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     
-    if (!selectedStartDate || (selectedStartDate && selectedEndDate && dateStr < selectedStartDate)) {
+    // Simple logic: First click = start, Second click = end
+    if (!selectedStartDate || (selectedStartDate && selectedEndDate)) {
+      // Start fresh selection
       setSelectedStartDate(dateStr);
       setSelectedEndDate('');
-    } else if (selectedStartDate && !selectedEndDate) {
-      if (dateStr >= selectedStartDate) {
-        setSelectedEndDate(dateStr);
-        setTimeout(() => setShowDatePicker(false), 300);
-      } else {
+    } else {
+      // Second click = end date (auto-sort if needed)
+      if (dateStr < selectedStartDate) {
+        // Swap if end is before start
+        setSelectedEndDate(selectedStartDate);
         setSelectedStartDate(dateStr);
-        setSelectedEndDate('');
+      } else {
+        setSelectedEndDate(dateStr);
       }
+      setTimeout(() => setShowDatePicker(false), 300);
     }
   };
 
@@ -255,23 +260,14 @@ export default function SubmitPage() {
               />
             </div>
 
-            {/* Department */}
-            <div>
-              <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-1 text-sm">
-                แผนกที่ต้องการส่ง <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value as Department)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
-              >
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept} className="bg-white dark:bg-slate-700">
-                    {DEPARTMENT_LABELS[dept]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Department - Searchable */}
+            <SearchableSelect
+              value={department}
+              onChange={setDepartment}
+              label="แผนกที่ต้องการส่ง"
+              required
+              placeholder="ค้นหาแผนก... (พิมพ์รหัสหรือชื่อ)"
+            />
 
             {/* Document Type */}
             <div>
@@ -316,11 +312,11 @@ export default function SubmitPage() {
                     <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 px-4 py-3 text-white flex justify-between items-center">
                       <div>
                         <h3 className="font-bold text-sm mb-1">เลือกช่วงวันที่</h3>
-                        {selectedStartDate && selectedEndDate && (
-                          <p className="text-indigo-100 text-xs">
-                            {new Date(selectedStartDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })} - {new Date(selectedEndDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
-                          </p>
-                        )}
+                        <p className="text-indigo-100 text-xs">
+                          {selectedStartDate && !selectedEndDate && '🔵 เลือกวันที่ 1 แล้ว - คลิกวันที่ 2'}
+                          {selectedStartDate && selectedEndDate && `✅ ${new Date(selectedStartDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })} - ${new Date(selectedEndDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}`}
+                          {!selectedStartDate && '👆 คลิกเพื่อเลือกวันที่เริ่มต้น'}
+                        </p>
                       </div>
                       {/* Close button for mobile */}
                       <button
@@ -438,22 +434,7 @@ export default function SubmitPage() {
                                         {day ? (
                                           <button
                                             type="button"
-                                            onClick={() => {
-                                              const dateStrForNextMonth = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                              
-                                              if (!selectedStartDate || (selectedStartDate && selectedEndDate && dateStrForNextMonth < selectedStartDate)) {
-                                                setSelectedStartDate(dateStrForNextMonth);
-                                                setSelectedEndDate('');
-                                              } else if (selectedStartDate && !selectedEndDate) {
-                                                if (dateStrForNextMonth >= selectedStartDate) {
-                                                  setSelectedEndDate(dateStrForNextMonth);
-                                                  setTimeout(() => setShowDatePicker(false), 300);
-                                                } else {
-                                                  setSelectedStartDate(dateStrForNextMonth);
-                                                  setSelectedEndDate('');
-                                                }
-                                              }
-                                            }}
+                                            onClick={() => handleDateClick(day, nextMonth)}
                                             className={`w-full h-full rounded-lg font-semibold text-xs transition-all ${
                                               isStart || isEnd
                                                 ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg'

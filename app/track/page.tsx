@@ -23,7 +23,6 @@ function TrackPageContent() {
     dateFrom: '',
     dateTo: '',
   });
-  const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -64,7 +63,6 @@ function TrackPageContent() {
     if (doc) {
       setDocument(doc);
       setNotFound(false);
-      setSearchMode('quick');
       toast.success(`พบเอกสาร ${searchId.trim()}`);
       await loadAllData();
     } else {
@@ -140,7 +138,6 @@ function TrackPageContent() {
       return nameMatch && deptMatch && dateFromMatch && dateToMatch;
     });
     setSearchResults(filtered);
-    setSearchMode('advanced');
     if (filtered.length > 0) {
       toast.success(`พบ ${filtered.length} เอกสาร`);
     } else {

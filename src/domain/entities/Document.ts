@@ -1,7 +1,14 @@
 // Domain Entity - ข้อมูลหลักของเอกสาร
 
 export type DocumentStatus = 'pending' | 'processing' | 'completed';
-export type Department = 'GI' | 'CHK' | 'PHY' | 'ENT' | 'EYE' | 'DENT' | 'SKIN' | 'OBG' | 'NIGHT OBG' | 'NIGHT MED' | 'MED' | 'PED' | 'NIGHT PED';
+export type Department = 
+  | 'PUR' | 'STO' | 'ER' | 'SURG' | 'CRO' | 'STR' | 'HSA' | 'ADMISSION' 
+  | 'AMB' | 'CAS' | 'PHA' | 'MED' | 'MRD' | 'PED' | 'OBG' | 'LAB' 
+  | 'MAI' | 'SKIN' | 'CCO' | 'HOU' | 'CHK' | 'EYE' | 'ENT' | 'CAR' 
+  | 'XRD' | 'DNT' | 'HD' | 'ICU' | 'CATH' | 'LR' | 'OR' | 'CSSD' 
+  | 'MEM' | 'NICU' | 'NSY' | 'HR' | 'MRA' | 'IPC' | 'ACC' | 'FIN' 
+  | 'QC' | 'COM' | 'PHY' | 'GI' | 'W10' | 'W11' | 'W12' 
+  | 'NIGHT OBG' | 'NIGHT MED' | 'NIGHT PED';
 export type DocumentType = 'WI' | 'WP' | 'POLICY' | 'WAITING TIME';
 
 export interface HistoryEntry {
