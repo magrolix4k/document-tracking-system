@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { BarChart3, FileText, Send, Search, Settings } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -7,7 +8,9 @@ export default function Home() {
       <main className="container mx-auto max-w-[1600px]">
         {/* Hero Section */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">📄</div>
+          <div className="text-6xl mb-4 flex justify-center">
+            <FileText className="w-24 h-24 text-blue-600" />
+          </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-slate-100 mb-3">
             ระบบติดตามเอกสาร
           </h1>
@@ -20,7 +23,9 @@ export default function Home() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Link href="/submit">
             <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md hi-tech-shadow p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl cursor-pointer h-full border border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 group">
-              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110">📤</div>
+              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 flex justify-center">
+                <Send className="w-20 h-20 text-blue-600" />
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 ส่งเอกสาร
               </h3>
@@ -32,7 +37,9 @@ export default function Home() {
 
           <Link href="/track">
             <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md hi-tech-shadow p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl cursor-pointer h-full border border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 group">
-              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110">🔍</div>
+              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 flex justify-center">
+                <Search className="w-20 h-20 text-blue-600" />
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 ติดตามสถานะ
               </h3>
@@ -44,7 +51,9 @@ export default function Home() {
 
           <Link href="/manage">
             <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md hi-tech-shadow p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl cursor-pointer h-full border border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 group">
-              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110">⚙️</div>
+              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 flex justify-center">
+                <Settings className="w-20 h-20 text-blue-600" />
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 จัดการเอกสาร
               </h3>
@@ -56,7 +65,9 @@ export default function Home() {
 
           <Link href="/dashboard">
             <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md hi-tech-shadow p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl cursor-pointer h-full border border-blue-500/20 dark:border-blue-500/30 hover:border-blue-500/50 group">
-              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110">📊</div>
+              <div className="text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 flex justify-center">
+                <BarChart3 className="w-20 h-20 text-blue-600" />
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 Dashboard
               </h3>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { Home, Send, Search, FileText, BarChart3, Moon, Sun } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,12 +49,12 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const links = [
-    { href: '/', label: 'หน้าแรก', icon: '🏠' },
-    { href: '/submit', label: 'ส่งเอกสาร', icon: '📤' },
-    { href: '/track', label: 'ติดตามสถานะ', icon: '🔍' },
-    { href: '/manage', label: 'จัดการเอกสาร', icon: '📋' },
-    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  const navConfig = [
+    { href: '/', label: 'หน้าแรก', icon: Home },
+    { href: '/submit', label: 'ส่งเอกสาร', icon: Send },
+    { href: '/track', label: 'ติดตามสถานะ', icon: Search },
+    { href: '/manage', label: 'จัดการเอกสาร', icon: FileText },
+    { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -65,7 +66,7 @@ export default function Navbar() {
           {/* System Name - Left side - Now clickable */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-all duration-300 hover:scale-105 group">
             <div className="text-2xl bg-gradient-to-br from-blue-400 to-indigo-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:shadow-blue-400/50 transition-all duration-300">
-              📄
+              <FileText className="w-5 h-5 text-white" />
             </div>
             <span className="text-sm sm:text-base lg:text-lg font-bold whitespace-nowrap bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
               ระบบติดตามเอกสาร
@@ -74,23 +75,26 @@ export default function Navbar() {
           {/* Desktop Menu - Only show when NOT mobile */}
           {!isMobile && (
             <div className="flex items-center gap-2 xl:gap-3 flex-1 mx-4 justify-center">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`group relative px-3 py-2 lg:px-4 rounded-xl transition-all duration-300 text-sm xl:text-base whitespace-nowrap flex items-center gap-2 ${
-                    isActive(link.href)
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/50 scale-105'
-                      : 'hover:bg-white/10 hover:shadow-md hover:shadow-blue-400/20 hover:scale-105 backdrop-blur-sm'
-                  }`}
-                >
-                  {isActive(link.href) && (
-                    <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/20 to-indigo-400/20 animate-pulse -z-10"></span>
-                  )}
-                  <span className="relative z-10 text-lg transition-transform duration-300 group-hover:scale-110">{link.icon}</span>
-                  <span className="relative z-10">{link.label}</span>
-                </Link>
-              ))}
+              {navConfig.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group relative px-3 py-2 lg:px-4 rounded-xl transition-all duration-300 text-sm xl:text-base whitespace-nowrap flex items-center gap-2 ${
+                      isActive(item.href)
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/50 scale-105'
+                        : 'hover:bg-white/10 hover:shadow-md hover:shadow-blue-400/20 hover:scale-105 backdrop-blur-sm'
+                    }`}
+                  >
+                    {isActive(item.href) && (
+                      <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/20 to-indigo-400/20 animate-pulse -z-10"></span>
+                    )}
+                    <IconComponent className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+                    <span className="relative z-10">{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           )}
           
@@ -103,9 +107,11 @@ export default function Navbar() {
               aria-label="Toggle dark mode"
               title={darkMode ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
             >
-              <span className="text-xl transition-transform duration-300 inline-block hover:rotate-12">
-                {darkMode ? '🌙' : '☀️'}
-              </span>
+              {darkMode ? (
+                <Moon className="w-5 h-5 transition-transform duration-300 hover:rotate-12" />
+              ) : (
+                <Sun className="w-5 h-5 transition-transform duration-300 hover:rotate-12" />
+              )}
             </button>
             
             {/* Mobile Menu Button - Only show when mobile */}
@@ -144,21 +150,24 @@ export default function Navbar() {
         {/* Mobile Dropdown Menu - Shows when hamburger is clicked and mobile */}
         {isMobile && isOpen && (
           <div className="pb-3 space-y-2 border-t border-blue-400/30 pt-3 animate-slide-in">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
-                  isActive(link.href)
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/30'
-                    : 'hover:bg-white/10 hover:shadow-md hover:shadow-blue-400/20 backdrop-blur-sm'
-                }`}
-              >
-                <span className="text-xl">{link.icon}</span>
-                <span>{link.label}</span>
-              </Link>
-            ))}
+            {navConfig.map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    isActive(item.href)
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/30'
+                      : 'hover:bg-white/10 hover:shadow-md hover:shadow-blue-400/20 backdrop-blur-sm'
+                  }`}
+                >
+                  <IconComponent className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

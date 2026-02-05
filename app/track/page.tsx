@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { Search, Bell, AlertCircle, Settings, X, BarChart3, FileText, History, CheckCircle2, FileEdit, Edit3, Check, ChevronDown, MessageSquare, PenLine } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Document, Department } from '@/src/domain/entities';
 import { getDocumentById, getAllDocuments } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 import { DEPARTMENT_LABELS } from '@/src/shared/constants';
+import { logger } from '@/src/shared/services';
+import { getStatusText, getStatusColor, formatThaiDate, formatSlashDate } from '@/src/shared/utils';
 
 function TrackPageContent() {
   const searchParams = useSearchParams();
@@ -35,21 +38,26 @@ function TrackPageContent() {
   }, [searchParams]);
 
   const loadAllData = async () => {
-    const allDocs = await getAllDocuments();
-    
-    // Recent documents - 10 most recently submitted
-    const sorted = allDocs
-      .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime())
-      .slice(0, 10)
-      .map(doc => doc.id);
-    setRecentDocuments(sorted);
-    
-    // Pending documents
-    const pending = allDocs.filter(doc => {
-      return doc.status === 'pending' || doc.status === 'processing';
-    });
-    pending.sort((a, b) => new Date(a.submittedDate).getTime() - new Date(b.submittedDate).getTime());
-    setPendingDocuments(pending);
+    try {
+      const allDocs = await getAllDocuments();
+      
+      // Recent documents - 10 most recently submitted
+      const sorted = allDocs
+        .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime())
+        .slice(0, 10)
+        .map(doc => doc.id);
+      setRecentDocuments(sorted);
+      
+      // Pending documents
+      const pending = allDocs.filter(doc => {
+        return doc.status === 'pending' || doc.status === 'processing';
+      });
+      pending.sort((a, b) => new Date(a.submittedDate).getTime() - new Date(b.submittedDate).getTime());
+      setPendingDocuments(pending);
+    } catch (error) {
+      logger.error('Failed to load track data', error instanceof Error ? error : undefined, 'track');
+      toast.error('ไม่สามารถโหลดข้อมูลได้');
+    }
   };
 
   const handleSearch = async (id?: string) => {
@@ -59,72 +67,34 @@ function TrackPageContent() {
       return;
     }
 
-    const doc = await getDocumentById(searchId.trim());
-    if (doc) {
-      setDocument(doc);
-      setNotFound(false);
-      toast.success(`พบเอกสาร ${searchId.trim()}`);
-      await loadAllData();
-    } else {
+    try {
+      const doc = await getDocumentById(searchId.trim());
+      if (doc) {
+        setDocument(doc);
+        setNotFound(false);
+        toast.success(`พบเอกสาร ${searchId.trim()}`);
+        await loadAllData();
+      } else {
+        setDocument(null);
+        setNotFound(true);
+        toast.error(`ไม่พบเอกสารหมายเลข ${searchId.trim()}`);
+      }
+    } catch (error) {
+      logger.error('Failed to search document', error instanceof Error ? error : undefined, 'track', { searchId });
+      toast.error('เกิดข้อผิดพลาดในการค้นหา');
       setDocument(null);
       setNotFound(true);
-      toast.error(`ไม่พบเอกสารหมายเลข ${searchId.trim()}`);
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'รอดำเนินการ';
-      case 'processing':
-        return 'กำลังดำเนินการ';
-      case 'completed':
-        return 'เสร็จสิ้น/ส่งคืนแล้ว';
-      default:
-        return status;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatShortDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
   };
 
   const getDaysAgoText = (dateString: string) => {
     const days = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (24 * 60 * 60 * 1000));
     if (days === 0) {
-      return `วันนี้ (${formatShortDate(dateString)})`;
+      return `วันนี้ (${formatSlashDate(dateString)})`;
     } else if (days === 1) {
-      return `เมื่อวาน (${formatShortDate(dateString)})`;
+      return `เมื่อวาน (${formatSlashDate(dateString)})`;
     } else {
-      return `${days} วันแล้ว (${formatShortDate(dateString)})`;
+      return `${days} วันแล้ว (${formatSlashDate(dateString)})`;
     }
   };
 
@@ -150,7 +120,9 @@ function TrackPageContent() {
       <div className="container mx-auto max-w-[1600px]">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border dark:border-slate-700">
           <div className="text-center mb-6">
-            <div className="text-5xl mb-3">🔍</div>
+            <div className="mb-3">
+              <Search className="w-16 h-16 text-indigo-600 mx-auto" />
+            </div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-1">
               ติดตามสถานะเอกสาร
             </h1>
@@ -166,7 +138,7 @@ function TrackPageContent() {
             {recentDocuments.length > 0 && (
               <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-900/30 dark:to-blue-800/10 backdrop-blur-sm border border-blue-300/40 dark:border-blue-700/40 rounded-xl p-4 hover:border-blue-300/60 dark:hover:border-blue-600/60 transition-colors">
                 <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-3 text-sm flex items-center gap-2">
-                  <span>🔔</span> ล่าสุด
+                  <Bell className="w-4 h-4" /> ล่าสุด
                 </h3>
                 <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
                   {recentDocuments.map((docId) => (
@@ -182,8 +154,8 @@ function TrackPageContent() {
                           : 'bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 border border-blue-300/60 dark:border-blue-600/40 text-blue-700 dark:text-blue-300'
                       }`}
                     >
-                      {document?.id === docId && '✓ '}
-                      {docId.substring(0, 12)}
+                      {document?.id === docId && <Check className="w-3 h-3 inline mr-1" />}
+                      {docId.length > 18 ? docId.substring(0, 18) + '...' : docId}
                     </button>
                   ))}
                 </div>
@@ -194,7 +166,7 @@ function TrackPageContent() {
             {pendingDocuments.length > 0 && (
               <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-900/30 dark:to-amber-800/10 backdrop-blur-sm border border-amber-300/40 dark:border-amber-700/40 rounded-xl p-4 hover:border-amber-300/60 dark:hover:border-amber-600/60 transition-colors">
                 <h3 className="font-bold text-amber-900 dark:text-amber-300 mb-3 text-sm flex items-center gap-2">
-                  <span>⚠️</span> ค้างอยู่
+                  <AlertCircle className="w-4 h-4" /> ค้างอยู่
                 </h3>
                 <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
                   {pendingDocuments.slice(0, 10).map((doc) => (
@@ -211,8 +183,8 @@ function TrackPageContent() {
                       }`}
                       title={getDaysAgoText(doc.submittedDate)}
                     >
-                      {document?.id === doc.id && '✓ '}
-                      {doc.id.substring(0, 12)}
+                      {document?.id === doc.id && <Check className="w-3 h-3 inline mr-1" />}
+                      {doc.id.length > 18 ? doc.id.substring(0, 18) + '...' : doc.id}
                     </button>
                   ))}
                   {pendingDocuments.length > 10 && (
@@ -243,14 +215,24 @@ function TrackPageContent() {
             </div>
             <button
               onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-              className="text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-semibold"
+              className="text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-semibold flex items-center gap-1"
             >
-              {showAdvancedSearch ? '🔽 ซ่อนการค้นหาขั้นสูง' : '🔎 ค้นหาขั้นสูง'}
+              {showAdvancedSearch ? (
+                <>
+                  <ChevronDown className="w-4 h-4" /> ซ่อนการค้นหาขั้นสูง
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" /> ค้นหาขั้นสูง
+                </>
+              )}
             </button>
             
             {showAdvancedSearch && (
               <div className="mt-3 p-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-lg space-y-2">
-                <h3 className="font-bold text-purple-900 dark:text-purple-300 mb-2 text-sm">⚙️ ค้นหาขั้นสูง</h3>
+                <h3 className="font-bold text-purple-900 dark:text-purple-300 mb-2 text-sm flex items-center gap-2">
+                  <Settings className="w-4 h-4" /> ค้นหาขั้นสูง
+                </h3>
                 <input
                   type="text"
                   placeholder="ชื่อผู้ส่ง"
@@ -317,7 +299,9 @@ function TrackPageContent() {
           {/* Not Found */}
           {notFound && (
             <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-800 rounded-lg p-4 text-center max-w-lg mx-auto">
-              <div className="text-4xl mb-2">❌</div>
+              <div className="text-4xl mb-2 flex justify-center">
+                <X className="w-16 h-16 text-red-500" />
+              </div>
               <p className="text-red-700 dark:text-red-400 text-sm font-semibold">
                 ไม่พบเอกสารหมายเลข: {documentId}
               </p>
@@ -338,17 +322,19 @@ function TrackPageContent() {
 
               {/* Timeline */}
               <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-4 border dark:border-slate-700">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3">📊 Timeline</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" /> Timeline
+                </h3>
                 <div className="space-y-3">
                   {/* Submitted */}
                   <div className="flex items-start gap-4">
                     <div className="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      ✓
+                      <Check className="w-4 h-4" />
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900 dark:text-slate-100 text-sm">ส่งเอกสาร</p>
                       <p className="text-gray-600 dark:text-slate-400 text-xs">
-                        {formatDate(document.submittedDate)}
+                        {formatThaiDate(document.submittedDate)}
                       </p>
                     </div>
                   </div>
@@ -357,12 +343,12 @@ function TrackPageContent() {
                   {document.receivedDate && (
                     <div className="flex items-start gap-4">
                       <div className="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        ✓
+                        <Check className="w-4 h-4" />
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 dark:text-slate-100 text-sm">รับเอกสาร</p>
                         <p className="text-gray-600 dark:text-slate-400 text-xs">
-                          {formatDate(document.receivedDate)}
+                          {formatThaiDate(document.receivedDate)}
                         </p>
                       </div>
                     </div>
@@ -372,12 +358,12 @@ function TrackPageContent() {
                   {document.completedDate ? (
                     <div className="flex items-start gap-4">
                       <div className="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        ✓
+                        <Check className="w-4 h-4" />
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 dark:text-slate-100 text-sm">เสร็จสิ้น</p>
                         <p className="text-gray-600 dark:text-slate-400 text-xs">
-                          {formatDate(document.completedDate)}
+                          {formatThaiDate(document.completedDate)}
                         </p>
                       </div>
                     </div>
@@ -397,8 +383,8 @@ function TrackPageContent() {
 
               {/* Document Info */}
               <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-4 border dark:border-slate-700 space-y-2">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3">
-                  📋 ข้อมูลเอกสาร
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                  <FileText className="w-5 h-5" /> ข้อมูลเอกสาร
                 </h3>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
@@ -441,8 +427,8 @@ function TrackPageContent() {
               {/* History Log */}
               {document.history && document.history.length > 0 && (
                 <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-800 rounded-lg p-4">
-                  <h3 className="text-lg font-bold text-purple-900 dark:text-purple-300 mb-3">
-                    📝 ประวัติการดำเนินการ
+                  <h3 className="text-lg font-bold text-purple-900 dark:text-purple-300 mb-3 flex items-center gap-2">
+                    <History className="w-5 h-5" /> ประวัติการดำเนินการ
                   </h3>
                   <div className="space-y-2">
                     {document.history.map((entry, index) => (
@@ -451,12 +437,32 @@ function TrackPageContent() {
                           {index + 1}
                         </div>
                         <div className="flex-1 text-xs">
-                          <p className="font-semibold text-purple-900 dark:text-purple-300">
-                            {entry.action === 'created' && '📤 สร้างเอกสาร'}
-                            {entry.action === 'received' && '📥 รับเอกสาร'}
-                            {entry.action === 'completed' && '✅ เสร็จสิ้น'}
-                            {entry.action === 'note_added' && '📝 เพิ่มหมายเหตุ'}
-                            {entry.action === 'note_updated' && '✏️ แก้ไขหมายเหตุ'}
+                          <p className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1">
+                            {entry.action === 'created' && (
+                              <>
+                                <FileEdit className="w-3 h-3" /> สร้างเอกสาร
+                              </>
+                            )}
+                            {entry.action === 'received' && (
+                              <>
+                                <Edit3 className="w-3 h-3" /> รับเอกสาร
+                              </>
+                            )}
+                            {entry.action === 'completed' && (
+                              <>
+                                <CheckCircle2 className="w-3 h-3" /> เสร็จสิ้น
+                              </>
+                            )}
+                            {entry.action === 'note_added' && (
+                              <>
+                                <PenLine className="w-3 h-3" /> เพิ่มหมายเหตุ
+                              </>
+                            )}
+                            {entry.action === 'note_updated' && (
+                              <>
+                                <Edit3 className="w-3 h-3" /> แก้ไขหมายเหตุ
+                              </>
+                            )}
                           </p>
                           {entry.staffName && (
                             <p className="text-purple-700 dark:text-purple-400">
@@ -464,7 +470,7 @@ function TrackPageContent() {
                             </p>
                           )}
                           <p className="text-purple-600 dark:text-purple-500">
-                            {formatDate(entry.timestamp)}
+                            {formatThaiDate(entry.timestamp)}
                           </p>
                           {entry.note && (
                             <p className="text-purple-800 dark:text-purple-300 mt-1">{entry.note}</p>
@@ -479,8 +485,8 @@ function TrackPageContent() {
               {/* Staff Note */}
               {document.staffNote && (
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-800 rounded-lg p-4">
-                  <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-300 mb-2">
-                    💬 หมายเหตุจากเจ้าหน้าที่
+                  <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" /> หมายเหตุจากเจ้าหน้าที่
                   </h3>
                   <p className="text-indigo-800 dark:text-indigo-400 text-sm">{document.staffNote}</p>
                 </div>
@@ -498,7 +504,9 @@ export default function TrackPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 py-6 px-4 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">🔍</div>
+          <div className="text-6xl mb-4 flex justify-center">
+            <Search className="w-24 h-24 text-indigo-600" />
+          </div>
           <p className="text-gray-600 dark:text-slate-400">กำลังโหลด...</p>
         </div>
       </div>

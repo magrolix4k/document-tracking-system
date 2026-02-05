@@ -12,8 +12,8 @@ const VALID_DEPARTMENTS: readonly Department[] = [
   'QC', 'COM', 'PHY', 'GI', 'W10', 'W11', 'W12',
   'NIGHT OBG', 'NIGHT MED', 'NIGHT PED'
 ] as const;
-const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed'] as const;
-const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY', 'WAITING TIME'] as const;
+const VALID_STATUSES: readonly DocumentStatus[] = ['pending', 'processing', 'completed', 'cancelled'] as const;
+const VALID_DOCUMENT_TYPES: readonly DocumentType[] = ['WI', 'WP', 'POLICY', 'WAITING TIME', 'FORM'] as const;
 
 // Validation helpers
 export function isValidDepartment(value: unknown): value is Department {

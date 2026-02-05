@@ -1,15 +1,31 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { CheckCircle2, ClipboardList, Check, Send, Calendar, X, ChevronDown } from 'lucide-react';
 import { Department, DocumentType } from '@/src/domain/entities';
 import { generateDocumentId, saveDocument } from '@/utils/storage';
 import { useToast } from '@/src/presentation/contexts';
 import { getWeekDateRange } from '@/src/shared/utils/weekDateRange';
-import { SearchableSelect } from '@/src/presentation/components';
+import { GenericSearchableSelect } from '@/src/presentation/components';
+import { DOCUMENT_ACTIONS, DEPARTMENTS, DEPARTMENT_LABELS } from '@/src/shared/constants';
+import { logger } from '@/src/shared/services';
 
 const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+
+const departmentOptions = DEPARTMENTS.map(dept => ({
+  value: dept,
+  label: DEPARTMENT_LABELS[dept]
+}));
+
+const documentTypeOptions = [
+  { value: 'WI' as DocumentType, label: 'WI (Work Instruction)' },
+  { value: 'WP' as DocumentType, label: 'WP (Work Procedure)' },
+  { value: 'POLICY' as DocumentType, label: 'POLICY (นโยบาย)' },
+  { value: 'WAITING TIME' as DocumentType, label: 'WAITING TIME (เวลารอคอย)' },
+  { value: 'FORM' as DocumentType, label: 'FORM (แบบฟอร์ม)' },
+];
 
 export default function SubmitPage() {
   const toast = useToast();
@@ -20,6 +36,7 @@ export default function SubmitPage() {
   const [details, setDetails] = useState('');
   const [submittedDoc, setSubmittedDoc] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStartDate, setSelectedStartDate] = useState(getWeekDateRange().monday);
   const [selectedEndDate, setSelectedEndDate] = useState(getWeekDateRange().sunday);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -123,39 +140,60 @@ export default function SubmitPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!senderName.trim()) {
+    // Enhanced validation
+    const trimmedName = senderName.trim();
+    if (!trimmedName) {
       toast.error('กรุณากรอกชื่อผู้ส่ง');
       return;
     }
 
-    const docId = await generateDocumentId();
-    const newDocument = {
-      id: docId,
-      senderName: senderName.trim(),
-      department,
-      documentType,
-      weekRange: weekLabel,
-      details: details.trim(),
-      status: 'processing' as const,
-      submittedDate: new Date().toISOString(),
-      receivedDate: new Date().toISOString(),
-      history: [
-        {
-          timestamp: new Date().toISOString(),
-          action: 'created',
-          note: `เอกสารของสัปดาห์ ${weekLabel} ถูกส่งโดย ${senderName.trim()}`,
-        },
-      ],
-    };
+    if (trimmedName.length > 100) {
+      toast.error('ชื่อผู้ส่งยาวเกินไป (สูงสุด 100 ตัวอักษร)');
+      return;
+    }
 
-    await saveDocument(newDocument);
-    setSubmittedDoc(docId);
-    setShowSuccess(true);
-    toast.success(`ส่งเอกสารสำเร็จ! หมายเลข: ${docId}`);
+    if (details.trim().length > 500) {
+      toast.error('รายละเอียดยาวเกินไป (สูงสุด 500 ตัวอักษร)');
+      return;
+    }
 
-    // Reset form
-    setSenderName('');
-    setDetails('');
+    setIsSubmitting(true);
+    
+    try {
+      const docId = await generateDocumentId();
+      const newDocument = {
+        id: docId,
+        senderName: senderName.trim(),
+        department,
+        documentType,
+        weekRange: weekLabel,
+        details: details.trim(),
+        status: 'processing' as const,
+        submittedDate: new Date().toISOString(),
+        receivedDate: new Date().toISOString(),
+        history: [
+          {
+            timestamp: new Date().toISOString(),
+            action: DOCUMENT_ACTIONS.CREATED,
+            note: `เอกสารของสัปดาห์ ${weekLabel} ถูกส่งโดย ${senderName.trim()}`,
+          },
+        ],
+      };
+
+      await saveDocument(newDocument);
+      setSubmittedDoc(docId);
+      setShowSuccess(true);
+      toast.success(`ส่งเอกสารสำเร็จ! หมายเลข: ${docId}`);
+
+      // Reset form
+      setSenderName('');
+      setDetails('');
+    } catch (error) {
+      logger.error('Failed to submit document', error instanceof Error ? error : undefined, 'submit', { weekLabel });
+      toast.error('เกิดข้อผิดพลาดในการส่งเอกสาร กรุณาลองอีกครั้ง');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -168,7 +206,9 @@ export default function SubmitPage() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-950 dark:to-slate-900 py-6 px-4">
         <div className="container mx-auto max-w-[1600px]">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 text-center border dark:border-slate-700 max-w-lg mx-auto">
-            <div className="text-5xl mb-4">✅</div>
+            <div className="mb-4">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+            </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-3">
               ส่งเอกสารสำเร็จ!
             </h2>
@@ -203,7 +243,7 @@ export default function SubmitPage() {
                   className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
                   title="คัดลอกเลขที่เอกสาร"
                 >
-                  📋
+                  <ClipboardList className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -235,7 +275,9 @@ export default function SubmitPage() {
       <div className="container mx-auto max-w-[1600px]">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border dark:border-slate-700 max-w-2xl mx-auto">
           <div className="text-center mb-6">
-            <div className="text-4xl mb-3">📤</div>
+            <div className="text-4xl mb-3 flex justify-center">
+              <Send className="w-16 h-16 text-blue-600" />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
               ส่งเอกสาร
             </h1>
@@ -254,6 +296,8 @@ export default function SubmitPage() {
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
+                maxLength={100}
+                title="กรุณากรอกชื่อผู้ส่ง (สูงสุด 100 ตัวอักษร)"
                 className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none text-sm"
                 placeholder="กรอกชื่อ-นามสกุล"
                 required
@@ -261,30 +305,24 @@ export default function SubmitPage() {
             </div>
 
             {/* Department - Searchable */}
-            <SearchableSelect
+            <GenericSearchableSelect
               value={department}
               onChange={setDepartment}
+              options={departmentOptions}
               label="แผนกที่ต้องการส่ง"
               required
               placeholder="ค้นหาแผนก... (พิมพ์รหัสหรือชื่อ)"
             />
 
-            {/* Document Type */}
-            <div>
-              <label className="block text-gray-700 dark:text-slate-200 font-semibold mb-1 text-sm">
-                ประเภทเอกสาร <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors outline-none text-sm"
-              >
-                <option value="WI" className="bg-white dark:bg-slate-700">WI (Work Instruction)</option>
-                <option value="WP" className="bg-white dark:bg-slate-700">WP (Work Procedure)</option>
-                <option value="POLICY" className="bg-white dark:bg-slate-700">POLICY (นโยบาย)</option>
-                <option value="WAITING TIME" className="bg-white dark:bg-slate-700">WAITING TIME (เวลารอคอย)</option>
-              </select>
-            </div>
+            {/* Document Type - Searchable */}
+            <GenericSearchableSelect
+              value={documentType}
+              onChange={setDocumentType}
+              options={documentTypeOptions}
+              label="ประเภทเอกสาร"
+              required
+              placeholder="ค้นหาประเภทเอกสาร..."
+            />
 
             {/* Week Range Display with Beautiful Calendar Picker */}
             <div>
@@ -297,12 +335,10 @@ export default function SubmitPage() {
                   onClick={() => setShowDatePicker(!showDatePicker)}
                   className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 flex items-center justify-between transition-colors shadow-sm text-sm"
                 >
-                  <span className="text-gray-900 dark:text-white font-semibold">
-                    📅 {weekLabel}
+                  <span className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> {weekLabel}
                   </span>
-                  <span className={`text-indigo-600 dark:text-indigo-400 transition-transform ${showDatePicker ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
+                  <ChevronDown className={`w-4 h-4 text-indigo-600 dark:text-indigo-400 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Beautiful Calendar Picker Dropdown */}
@@ -312,10 +348,20 @@ export default function SubmitPage() {
                     <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 px-4 py-3 text-white flex justify-between items-center">
                       <div>
                         <h3 className="font-bold text-sm mb-1">เลือกช่วงวันที่</h3>
-                        <p className="text-indigo-100 text-xs">
-                          {selectedStartDate && !selectedEndDate && '🔵 เลือกวันที่ 1 แล้ว - คลิกวันที่ 2'}
-                          {selectedStartDate && selectedEndDate && `✅ ${new Date(selectedStartDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })} - ${new Date(selectedEndDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}`}
-                          {!selectedStartDate && '👆 คลิกเพื่อเลือกวันที่เริ่มต้น'}
+                        <p className="text-indigo-100 text-xs flex items-center gap-1">
+                          {selectedStartDate && !selectedEndDate && (
+                            <>
+                              <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                              เลือกวันที่ 1 แล้ว - คลิกวันที่ 2
+                            </>
+                          )}
+                          {selectedStartDate && selectedEndDate && (
+                            <>
+                              <Check className="w-3 h-3" />
+                              {new Date(selectedStartDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })} - {new Date(selectedEndDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                            </>
+                          )}
+                          {!selectedStartDate && 'คลิกเพื่อเลือกวันที่เริ่มต้น'}
                         </p>
                       </div>
                       {/* Close button for mobile */}
@@ -324,7 +370,7 @@ export default function SubmitPage() {
                         onClick={() => setShowDatePicker(false)}
                         className="sm:hidden text-white hover:bg-indigo-600 p-2 rounded-lg"
                       >
-                        ✕
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
 
@@ -608,18 +654,22 @@ export default function SubmitPage() {
               <textarea
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
+                maxLength={500}
+                title="รายละเอียดเพิ่มเติม (สูงสุด 500 ตัวอักษร)"
                 className="w-full px-3 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/50 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 transition-colors outline-none resize-none text-sm"
                 rows={3}
                 placeholder="กรอกรายละเอียดเพิ่มเติม (ถ้ามี)"
               />
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{details.length}/500 ตัวอักษร</p>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-lg"
+              disabled={isSubmitting}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ส่งเอกสาร
+              {isSubmitting ? 'กำลังส่ง...' : 'ส่งเอกสาร'}
             </button>
           </form>
         </div>

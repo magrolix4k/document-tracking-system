@@ -2,14 +2,15 @@
 'use client';
 
 import { firebaseDocumentService } from '@/src/infrastructure/firebase';
-import { Document } from '@/src/domain/entities';
+import { Document, UpdateDocumentDto, HistoryEntry, DocumentStatus } from '@/src/domain/entities';
+import { logger } from '@/src/shared/services';
 
 // Export old API for backward compatibility with existing pages
-export const getDocumentById = async (id: string) => {
+export const getDocumentById = async (id: string): Promise<Document | null> => {
   try {
     return await firebaseDocumentService.getDocumentById(id);
   } catch (error) {
-    console.error('Error getting document:', error);
+    logger.error('Error getting document', error instanceof Error ? error : undefined, 'storage', { id });
     return null;
   }
 };
@@ -18,7 +19,7 @@ export const getAllDocuments = async (): Promise<Document[]> => {
   try {
     return await firebaseDocumentService.getAllDocuments();
   } catch (error) {
-    console.error('Error getting all documents:', error);
+    logger.error('Error getting all documents', error instanceof Error ? error : undefined, 'storage');
     return [];
   }
 };
@@ -36,32 +37,36 @@ export const searchDocuments = async (filters: any) => {
       return true;
     });
   } catch (error) {
-    console.error('Error searching documents:', error);
+    logger.error('Error searching documents', error instanceof Error ? error : undefined, 'storage', { filters });
     return [];
   }
 };
 
-export const updateDocument = async (id: string, updated: any, staffName?: string) => {
+export const updateDocument = async (id: string, updates: UpdateDocumentDto, staffName?: string): Promise<void> => {
   try {
     const doc = await getDocumentById(id);
     if (!doc) {
-      console.error('Document not found:', id);
-      return;
+      throw new Error(`Document not found: ${id}`);
     }
 
-    const updatedDoc = { ...doc, ...updated };
+    const updatedDoc: Partial<Document> = { ...updates };
 
     // Add history entry if status is changing
-    if (updated.status && updated.status !== doc.status) {
-      const historyEntry: any = {
+    if (updates.status && updates.status !== doc.status) {
+      const historyEntry: HistoryEntry = {
         timestamp: new Date().toISOString(),
-        action: updated.status === 'processing' ? 'received' : updated.status === 'completed' ? 'completed' : 'updated',
-        newValue: updated.status,
+        action: updates.status === 'processing' ? 'received' : 
+                updates.status === 'completed' ? 'completed' :
+                updates.status === 'cancelled' ? 'cancelled' : 'updated',
+        newValue: updates.status,
       };
       
-      // Only add staffName if it exists
       if (staffName) {
         historyEntry.staffName = staffName;
+      }
+
+      if (updates.cancelReason && updates.status === 'cancelled') {
+        historyEntry.note = updates.cancelReason;
       }
       
       updatedDoc.history = [
@@ -72,29 +77,28 @@ export const updateDocument = async (id: string, updated: any, staffName?: strin
 
     await firebaseDocumentService.updateDocument(id, updatedDoc);
   } catch (error) {
-    console.error('Error updating document:', error);
+    logger.error('Error updating document', error instanceof Error ? error : undefined, 'storage', { id, updates });
     throw error;
   }
 };
 
-export const updateDocumentStatus = async (id: string, status: string, staffName?: string) => {
+export const updateDocumentStatus = async (id: string, status: DocumentStatus, staffName?: string): Promise<void> => {
   try {
     await updateDocument(id, { status }, staffName);
   } catch (error) {
-    console.error('Error updating document status:', error);
+    logger.error('Error updating document status', error instanceof Error ? error : undefined, 'storage', { id, status });
     throw error;
   }
 };
 
-export const addHistory = async (id: string, action: string, staffName?: string, note?: string) => {
+export const addHistory = async (id: string, action: string, staffName?: string, note?: string): Promise<void> => {
   try {
     const doc = await getDocumentById(id);
     if (!doc) {
-      console.error('Document not found:', id);
-      return;
+      throw new Error(`Document not found: ${id}`);
     }
 
-    const historyEntry = {
+    const historyEntry: HistoryEntry = {
       timestamp: new Date().toISOString(),
       action,
       staffName,
@@ -104,7 +108,7 @@ export const addHistory = async (id: string, action: string, staffName?: string,
     const updatedHistory = [...(doc.history || []), historyEntry];
     await firebaseDocumentService.updateDocument(id, { history: updatedHistory });
   } catch (error) {
-    console.error('Error adding history:', error);
+    logger.error('Error adding history', error instanceof Error ? error : undefined, 'storage', { id, action });
     throw error;
   }
 };
@@ -113,7 +117,7 @@ export const deleteDocument = async (id: string) => {
   try {
     await firebaseDocumentService.deleteDocument(id);
   } catch (error) {
-    console.error('Error deleting document:', error);
+    logger.error('Error deleting document', error instanceof Error ? error : undefined, 'storage', { id });
     throw error;
   }
 };
@@ -141,7 +145,7 @@ export const getDocumentsByDepartment = async (department: string) => {
   try {
     return await firebaseDocumentService.getDocumentsByDepartment(department);
   } catch (error) {
-    console.error('Error getting documents by department:', error);
+    logger.error('Error getting documents by department', error instanceof Error ? error : undefined, 'storage', { department });
     return [];
   }
 };
@@ -150,7 +154,7 @@ export const getDocumentsByStatus = async (departmentOrStatus: string, status?: 
   try {
     return await firebaseDocumentService.getDocumentsByStatus(departmentOrStatus, status);
   } catch (error) {
-    console.error('Error getting documents by status:', error);
+    logger.error('Error getting documents by status', error instanceof Error ? error : undefined, 'storage', { departmentOrStatus, status });
     return [];
   }
 };

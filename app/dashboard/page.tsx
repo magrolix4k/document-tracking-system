@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Document } from '@/src/domain/entities';
 import { Department } from '@/src/domain/entities';
+import { useToast } from '@/src/presentation/contexts';
+import { logger } from '@/src/shared/services';
+import { getStatusText, getStatusColor, formatThaiDate } from '@/src/shared/utils';
+import { BarChart3, TrendingUp, Target, Download, FileText, RefreshCw } from 'lucide-react';
 
 interface DepartmentStats {
   department: Department;
@@ -17,6 +21,7 @@ import { DEPARTMENTS } from '@/src/shared/constants';
 const departments: Department[] = DEPARTMENTS;
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [stats, setStats] = useState<DepartmentStats[]>([]);
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'processing' | 'completed'>('all');
@@ -25,115 +30,91 @@ export default function DashboardPage() {
   const [monthlyCompleted, setMonthlyCompleted] = useState(0);
   const [yearlyCompleted, setYearlyCompleted] = useState(0);
   const [dailyStats, setDailyStats] = useState<{date: string, count: number}[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadAllData();
   }, []);
 
   const loadAllData = async () => {
-    // ดึงข้อมูลทั้งหมดครั้งเดียว
-    const allDocs = await getAllDocuments();
-    setAllDocuments(allDocs);
+    setIsLoading(true);
+    try {
+      // ดึงข้อมูลทั้งหมดครั้งเดียว
+      const allDocs = await getAllDocuments();
+      setAllDocuments(allDocs);
 
-    // คำนวณทุกอย่างจาก allDocs ที่ได้มา
-    
-    // Department statistics
-    const departmentStats: DepartmentStats[] = departments.map((dept) => {
-      const deptDocs = allDocs.filter(d => d.department === dept);
-      const processing = deptDocs.filter((d) => d.status === 'processing').length;
-      const today = new Date().toDateString();
-      const completedToday = deptDocs.filter(
-        d => d.status === 'completed' && new Date(d.completedDate || '').toDateString() === today
-      ).length;
+      // คำนวณทุกอย่างจาก allDocs ที่ได้มา
+      
+      // Department statistics
+      const departmentStats: DepartmentStats[] = departments.map((dept) => {
+        const deptDocs = allDocs.filter(d => d.department === dept);
+        const processing = deptDocs.filter((d) => d.status === 'processing').length;
+        const today = new Date().toDateString();
+        const completedToday = deptDocs.filter(
+          d => d.status === 'completed' && new Date(d.completedDate || '').toDateString() === today
+        ).length;
 
-      return {
-        department: dept,
-        processing,
-        completedToday,
-      };
-    });
-    setStats(departmentStats);
+        return {
+          department: dept,
+          processing,
+          completedToday,
+        };
+      });
+      setStats(departmentStats);
 
-    // Period stats
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
+      // Period stats
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    setWeeklyCompleted(allDocs.filter(
-      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfWeek
-    ).length);
-    setMonthlyCompleted(allDocs.filter(
-      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfMonth
-    ).length);
-    setYearlyCompleted(allDocs.filter(
-      d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfYear
-    ).length);
+      setWeeklyCompleted(allDocs.filter(
+        d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfWeek
+      ).length);
+      setMonthlyCompleted(allDocs.filter(
+        d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfMonth
+      ).length);
+      setYearlyCompleted(allDocs.filter(
+        d => d.status === 'completed' && d.completedDate && new Date(d.completedDate) >= startOfYear
+      ).length);
 
-    // Daily stats
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const count = allDocs.filter(d => d.submittedDate.startsWith(dateStr)).length;
-      last7Days.push({ date: dateStr, count });
+      // Daily stats
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const count = allDocs.filter(d => d.submittedDate.startsWith(dateStr)).length;
+        last7Days.push({ date: dateStr, count });
+      }
+      setDailyStats(last7Days);
+    } catch (error) {
+      logger.error('Failed to load dashboard data', error instanceof Error ? error : undefined, 'dashboard');
+      toast.error('ไม่สามารถโหลดข้อมูลได้');
+    } finally {
+      setIsLoading(false);
     }
-    setDailyStats(last7Days);
   };
 
-  const totalProcessing = stats.reduce((sum, s) => sum + s.processing, 0);
-  const totalCompletedToday = stats.reduce((sum, s) => sum + s.completedToday, 0);
+  const totalProcessing = useMemo(() => stats.reduce((sum, s) => sum + s.processing, 0), [stats]);
+  const totalCompletedToday = useMemo(() => stats.reduce((sum, s) => sum + s.completedToday, 0), [stats]);
 
-  const filteredDocuments = allDocuments.filter((doc) => {
+  const filteredDocuments = useMemo(() => allDocuments.filter((doc) => {
     const statusMatch = filterStatus === 'all' || doc.status === filterStatus;
     const deptMatch = filterDepartment === 'all' || doc.department === filterDepartment;
     return statusMatch && deptMatch;
-  });
+  }), [allDocuments, filterStatus, filterDepartment]);
 
   const totalDocs = allDocuments.length;
-  const processingCount = allDocuments.filter(d => d.status === 'processing').length;
-  const completedCount = allDocuments.filter(d => d.status === 'completed').length;
+  const processingCount = useMemo(() => allDocuments.filter(d => d.status === 'processing').length, [allDocuments]);
+  const completedCount = useMemo(() => allDocuments.filter(d => d.status === 'completed').length, [allDocuments]);
   const processingPercent = totalDocs > 0 ? (processingCount / totalDocs) * 100 : 0;
   const completedPercent = totalDocs > 0 ? (completedCount / totalDocs) * 100 : 0;
-  const maxDeptCount = Math.max(...stats.map(s => s.processing + s.completedToday), 1);
-  const maxDailyCount = Math.max(...dailyStats.map(s => s.count), 1);
+  const maxDeptCount = useMemo(() => Math.max(...stats.map(s => s.processing + s.completedToday), 1), [stats]);
+  const maxDailyCount = useMemo(() => Math.max(...dailyStats.map(s => s.count), 1), [dailyStats]);
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'processing':
-        return 'ส่งเอกสาร';
-      case 'completed':
-        return 'รับเอกสารคืน';
-      default:
-        return status;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'processing':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const exportToExcel = async () => {
+  const exportToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
     const excelData = filteredDocuments.map((doc) => ({
       'เลขที่เอกสาร': doc.id,
@@ -142,9 +123,9 @@ export default function DashboardPage() {
       'ประเภทเอกสาร': doc.documentType,
       'สัปดาห์': doc.weekRange,
       'สถานะ': getStatusText(doc.status),
-      'วันที่ส่ง': formatDate(doc.submittedDate),
-      'วันที่รับ': doc.receivedDate ? formatDate(doc.receivedDate) : '-',
-      'วันที่เสร็จสิ้น': doc.completedDate ? formatDate(doc.completedDate) : '-',
+      'วันที่ส่ง': formatThaiDate(doc.submittedDate),
+      'วันที่รับ': doc.receivedDate ? formatThaiDate(doc.receivedDate) : '-',
+      'วันที่เสร็จสิ้น': doc.completedDate ? formatThaiDate(doc.completedDate) : '-',
       'รายละเอียด': doc.details || '-',
       'หมายเหตุ': doc.staffNote || '-',
     }));
@@ -160,9 +141,9 @@ export default function DashboardPage() {
 
     const fileName = `รายงานเอกสาร_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
-  };
+  }, [filteredDocuments]);
 
-  const exportStatsToExcel = async () => {
+  const exportStatsToExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
     const statsData: Array<Record<string, string | number>> = stats.map((stat) => ({
       'แผนก': stat.department,
@@ -184,15 +165,23 @@ export default function DashboardPage() {
 
     const fileName = `สถิติแผนก_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
-  };
+  }, [stats, totalProcessing, totalCompletedToday]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 py-6 px-4">
-      <div className="container mx-auto max-w-[1600px]">
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-slate-400">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-1 flex items-center gap-2">
-            <span className="text-3xl">📊</span> Dashboard & Analytics
+            <BarChart3 className="w-8 h-8" /> Dashboard & Analytics
           </h1>
           <p className="text-gray-600 dark:text-slate-400 text-sm">
             ภาพรวมและสถิติการทำงานแบบเรียลไทม์
@@ -230,7 +219,7 @@ export default function DashboardPage() {
             {/* Pie Chart */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 border dark:border-slate-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                <span>📈</span> สัดส่วนสถานะ
+                <TrendingUp className="w-5 h-5" /> สัดส่วนสถานะ
               </h2>
               <div className="flex flex-col items-center">
                 <div className="relative w-48 h-48 mb-4">
@@ -270,7 +259,7 @@ export default function DashboardPage() {
             {/* Daily Line Chart */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 border dark:border-slate-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                <span>📈</span> 7 วันย้อนหลัง
+                <TrendingUp className="w-5 h-5" /> 7 วันย้อนหลัง
               </h2>
               <div className="relative h-40 flex items-end justify-between gap-1">
                 {dailyStats.map((stat, index) => {
@@ -296,11 +285,11 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 border dark:border-slate-700">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                  <span>📊</span> สถิติแต่ละแผนก
+                  <BarChart3 className="w-5 h-5" /> สถิติแต่ละแผนก
                 </h2>
                 <button onClick={exportStatsToExcel}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-xs shadow">
-                  📊 Export
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-xs shadow flex items-center gap-1">
+                  <Download className="w-3 h-3" /> Export
                 </button>
               </div>
               <div className="space-y-2">
@@ -340,7 +329,7 @@ export default function DashboardPage() {
             {/* Department Performance Table */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 border dark:border-slate-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                <span>🎯</span> ประสิทธิภาพแผนก
+                <Target className="w-5 h-5" /> ประสิทธิภาพแผนก
               </h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -355,7 +344,8 @@ export default function DashboardPage() {
                   <tbody>
                     {stats.map((stat) => {
                       const workload = stat.processing + stat.completedToday;
-                      const workloadLevel = workload > 10 ? '🔴 สูง' : workload > 5 ? '🟡 ปานกลาง' : '🟢 ต่ำ';
+                      const workloadLevel = workload > 10 ? 'สูง' : workload > 5 ? 'ปานกลาง' : 'ต่ำ';
+                      const workloadColor = workload > 10 ? 'text-red-600 dark:text-red-400' : workload > 5 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400';
                       return (
                         <tr key={stat.department} className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
                           <td className="py-2 px-2 font-semibold text-gray-900 dark:text-slate-100">{stat.department}</td>
@@ -372,7 +362,7 @@ export default function DashboardPage() {
                           <td className="text-center py-2 px-2">
                             <div className="flex flex-col items-center">
                               <span className="font-bold text-gray-900 dark:text-slate-100">{workload}</span>
-                              <span className="text-[10px] text-gray-700 dark:text-slate-300">{workloadLevel}</span>
+                              <span className={`text-[10px] font-semibold ${workloadColor}`}>{workloadLevel}</span>
                             </div>
                           </td>
                         </tr>
@@ -384,9 +374,9 @@ export default function DashboardPage() {
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 flex flex-wrap gap-3 text-[10px] text-gray-600 dark:text-slate-400">
                 <div className="flex items-center gap-1">
                   <span className="font-semibold">ภาระงาน:</span>
-                  <span>🟢 ต่ำ (≤5)</span>
-                  <span>🟡 ปานกลาง (6-10)</span>
-                  <span>🔴 สูง ({'>'}10)</span>
+                  <span className="text-green-600 dark:text-green-400 font-semibold">● ต่ำ (≤5)</span>
+                  <span className="text-yellow-600 dark:text-yellow-400 font-semibold">● ปานกลาง (6-10)</span>
+                  <span className="text-red-600 dark:text-red-400 font-semibold">● สูง ({'>'}10)</span>
                 </div>
               </div>
             </div>
@@ -397,11 +387,11 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 border dark:border-slate-700">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-              <span>📄</span> รายการเอกสารทั้งหมด
+              <FileText className="w-5 h-5" /> รายการเอกสารทั้งหมด
             </h2>
             <button onClick={exportToExcel}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-xs shadow">
-              📥 Export รายการ
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-xs shadow flex items-center gap-1">
+              <Download className="w-3 h-3" /> Export รายการ
             </button>
           </div>
 
@@ -574,12 +564,13 @@ export default function DashboardPage() {
         <div className="mt-6 text-center">
           <button
             onClick={loadAllData}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors text-sm shadow-md"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors text-sm shadow-md flex items-center gap-2"
           >
-            🔄 รีเฟรชข้อมูล
+            <RefreshCw className="w-4 h-4" /> รีเฟรชข้อมูล
           </button>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,58 +1,71 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Department, Document } from '@/src/domain/entities';
 import { getAllDocuments } from '@/utils/storage';
 import { DEPARTMENTS } from '@/src/shared/constants';
+import { useToast } from '@/src/presentation/contexts';
+import { logger } from '@/src/shared/services';
+import { BarChart3, TrendingUp, RefreshCw } from 'lucide-react';
 
 const departments: Department[] = DEPARTMENTS;
 
 export default function ChartsPage() {
+  const toast = useToast();
   const [allDocs, setAllDocs] = useState<Document[]>([]);
   const [deptStats, setDeptStats] = useState<{dept: Department, count: number, pending: number, processing: number, completed: number}[]>([]);
   const [dailyStats, setDailyStats] = useState<{date: string, count: number}[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    // ดึงข้อมูลครั้งเดียว แล้วคำนวณทุกอย่างจากข้อมูลเดียวกัน
-    const docs = await getAllDocuments();
-    setAllDocs(docs);
+    setIsLoading(true);
+    try {
+      // ดึงข้อมูลครั้งเดียว แล้วคำนวณทุกอย่างจากข้อมูลเดียวกัน
+      const docs = await getAllDocuments();
+      setAllDocs(docs);
 
-    // Department statistics - คำนวณจาก docs ที่ได้มา
-    const stats = departments.map(dept => {
-      const deptDocs = docs.filter(d => d.department === dept);
-      return {
-        dept,
-        count: deptDocs.length,
-        pending: deptDocs.filter(d => d.status === 'pending').length,
-        processing: deptDocs.filter(d => d.status === 'processing').length,
-        completed: deptDocs.filter(d => d.status === 'completed').length,
-      };
-    });
-    setDeptStats(stats);
+      // Department statistics - คำนวณจาก docs ที่ได้มา
+      const stats = departments.map(dept => {
+        const deptDocs = docs.filter(d => d.department === dept);
+        return {
+          dept,
+          count: deptDocs.length,
+          pending: deptDocs.filter(d => d.status === 'pending').length,
+          processing: deptDocs.filter(d => d.status === 'processing').length,
+          completed: deptDocs.filter(d => d.status === 'completed').length,
+        };
+      });
+      setDeptStats(stats);
 
-    // Daily statistics (last 7 days)
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const count = docs.filter(d => d.submittedDate.startsWith(dateStr)).length;
-      last7Days.push({ date: dateStr, count });
+      // Daily statistics (last 7 days)
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const count = docs.filter(d => d.submittedDate.startsWith(dateStr)).length;
+        last7Days.push({ date: dateStr, count });
+      }
+      setDailyStats(last7Days);
+    } catch (error) {
+      logger.error('Failed to load chart data', error instanceof Error ? error : undefined, 'charts');
+      toast.error('ไม่สามารถโหลดข้อมูลกราฟได้');
+    } finally {
+      setIsLoading(false);
     }
-    setDailyStats(last7Days);
   };
 
-  const maxDeptCount = Math.max(...deptStats.map(s => s.count), 1);
-  const maxDailyCount = Math.max(...dailyStats.map(s => s.count), 1);
+  const maxDeptCount = useMemo(() => Math.max(...deptStats.map(s => s.count), 1), [deptStats]);
+  const maxDailyCount = useMemo(() => Math.max(...dailyStats.map(s => s.count), 1), [dailyStats]);
 
   const totalDocs = allDocs.length;
-  const pendingCount = allDocs.filter(d => d.status === 'pending').length;
-  const processingCount = allDocs.filter(d => d.status === 'processing').length;
-  const completedCount = allDocs.filter(d => d.status === 'completed').length;
+  const pendingCount = useMemo(() => allDocs.filter(d => d.status === 'pending').length, [allDocs]);
+  const processingCount = useMemo(() => allDocs.filter(d => d.status === 'processing').length, [allDocs]);
+  const completedCount = useMemo(() => allDocs.filter(d => d.status === 'completed').length, [allDocs]);
 
   const pendingPercent = totalDocs > 0 ? (pendingCount / totalDocs) * 100 : 0;
   const processingPercent = totalDocs > 0 ? (processingCount / totalDocs) * 100 : 0;
@@ -60,11 +73,19 @@ export default function ChartsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 py-8 px-4">
-      <div className="container mx-auto max-w-7xl">
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-slate-400">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-slate-100 mb-2 flex items-center justify-center gap-2">
-            <span className="text-4xl">📊</span> กราฟและสถิติ
+            <BarChart3 className="w-10 h-10" /> กราฟและสถิติ
           </h1>
           <p className="text-gray-600 dark:text-slate-400 text-sm">
             วิเคราะห์ข้อมูลด้วยกราฟและแผนภูมิ
@@ -73,8 +94,8 @@ export default function ChartsPage() {
 
         {/* Status Pie Chart (using CSS) */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-6 border dark:border-slate-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4">
-            📈 สัดส่วนสถานะเอกสาร
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-6 h-6" /> สัดส่วนสถานะเอกสาร
           </h2>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8">
             {/* Pie Chart Visual */}
@@ -154,8 +175,8 @@ export default function ChartsPage() {
 
         {/* Department Bar Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-6 border dark:border-slate-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4">
-            📊 จำนวนเอกสารแต่ละแผนก
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6" /> จำนวนเอกสารแต่ละแผนก
           </h2>
           <div className="space-y-3">
             {deptStats.map((stat) => (
@@ -214,8 +235,8 @@ export default function ChartsPage() {
 
         {/* Daily Line Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 border dark:border-slate-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4">
-            📈 แนวโน้มการส่งเอกสาร (7 วันย้อนหลัง)
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-6 h-6" /> แนวโน้มการส่งเอกสาร (7 วันย้อนหลัง)
           </h2>
           <div className="relative h-64 flex items-end justify-between gap-2 px-4">
             {dailyStats.map((stat, index) => {
@@ -242,12 +263,13 @@ export default function ChartsPage() {
         <div className="mt-6 text-center">
           <button
             onClick={loadData}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors text-sm shadow-md"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors text-sm shadow-md flex items-center gap-2"
           >
-            🔄 รีเฟรชข้อมูล
+            <RefreshCw className="w-4 h-4" /> รีเฟรชข้อมูล
           </button>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
